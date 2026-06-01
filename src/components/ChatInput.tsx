@@ -17,14 +17,23 @@ function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      e.currentTarget.form?.requestSubmit();
+    }
+  };
+
   return (
     <form className="chat-input" onSubmit={handleSubmit}>
-      <input
-        type="text"
+      <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={isLoading}
+        rows={2}
+        aria-label="Pertanyaan"
       />
       <button type="submit" disabled={isLoading || !input.trim()}>
         Kirim

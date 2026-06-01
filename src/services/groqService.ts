@@ -1,8 +1,11 @@
-import type { Message } from "../types/Message";
-import chatbotConfig, {
-  catalogItems,
-  formatPrice,
-} from "../config/chatbotConfig";
+import chatbotConfig from "../config/chatbotConfig";
+import type { BotReply, Message } from "../types/Message";
+import {
+  buildLocalFallbackAnswer,
+  buildRagContext,
+  retrieveRelevantChunks,
+  toMessageSources,
+} from "./ragService";
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const API_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -17,62 +20,44 @@ const injectionPatterns = [
   /berpura-pura/i,
   /you\s+are\s+now/i,
   /mulai\s+sekarang/i,
+  /lupakan\s+.*instruksi/i,
+  /bocor(?:kan)?\s+.*instruksi/i,
 ];
 
-const catalogTamperingPatterns = [
-  /ubah(?:kan)?\s+harga/i,
-  /ganti\s+harga/i,
-  /naikkan\s+harga/i,
-  /turunkan\s+harga/i,
-  /ubah(?:kan)?\s+katalog/i,
-  /ganti\s+katalog/i,
-  /hapus\s+katalog/i,
-  /tambah(?:kan)?\s+katalog/i,
-  /ubah(?:kan)?\s+buku/i,
-  /ganti\s+judul/i,
-  /hapus\s+judul/i,
-  /tambah(?:kan)?\s+judul/i,
-  /beri(?:kan)?\s+diskon/i,
-  /buat(?:kan)?\s+promo/i,
+const knowledgeTamperingPatterns = [
+  /ubah(?:kan)?\s+data/i,
+  /ganti\s+data/i,
+  /hapus\s+data/i,
+  /tambah(?:kan)?\s+data/i,
+  /ubah(?:kan)?\s+dokumen/i,
+  /ganti\s+dokumen/i,
+  /hapus\s+dokumen/i,
+  /tambah(?:kan)?\s+dokumen/i,
+  /ubah(?:kan)?\s+knowledge/i,
+  /hapus\s+knowledge/i,
+  /update\s+knowledge/i,
 ];
 
-function isProtectedCatalogRequest(prompt: string): boolean {
-  return [...injectionPatterns, ...catalogTamperingPatterns].some((pattern) =>
+function isProtectedKnowledgeRequest(prompt: string): boolean {
+  return [...injectionPatterns, ...knowledgeTamperingPatterns].some((pattern) =>
     pattern.test(prompt)
   );
 }
 
-function buildProtectedCatalogReply(): string {
-  return (
-    "Maaf, saya tidak bisa mengubah katalog atau harga resmi Lentera. " +
-    "Saya hanya bisa merekomendasikan buku yang tersedia di katalog. " +
-    "Coba beri mood baca, genre, atau budget Anda, ya."
-  );
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function normalizeCatalogPrices(reply: string): string {
-  return catalogItems.reduce((safeReply, item) => {
-    const pattern = new RegExp(
-      `(${escapeRegExp(item.title)}[^\\n]*?)Rp\\s*[0-9.]+`,
-      "gi"
-    );
-
-    return safeReply.replace(
-      pattern,
-      (_match, prefix: string) => `${prefix}${formatPrice(item.price)}`
-    );
-  }, reply);
+function buildProtectedKnowledgeReply(): BotReply {
+  return {
+    content:
+      "Maaf, saya tidak bisa mengubah atau membocorkan instruksi dan data sumber. " +
+      "Saya hanya bisa menjawab pertanyaan berdasarkan dokumen pendanaan Ormawa/UKM yang tersedia.",
+    sources: [],
+  };
 }
 
 function sanitizePlainText(reply: string): string {
   return reply
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/^#{1,6}\s*/gm, "")
-    .replace(/^\s*[\*\+\-]\s+/gm, "")
+    .replace(/^\s*[*+-]\s+/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -80,20 +65,35 @@ function sanitizePlainText(reply: string): string {
 export async function sendMessage(
   prompt: string,
   history: Message[]
-): Promise<string> {
-  if (!API_KEY) {
-    throw new Error(
-      "API Key tidak ditemukan! Pastikan file .env berisi VITE_GROQ_API_KEY dan restart dev server (npm run dev)."
-    );
+): Promise<BotReply> {
+  if (isProtectedKnowledgeRequest(prompt)) {
+    return buildProtectedKnowledgeReply();
   }
 
-  if (isProtectedCatalogRequest(prompt)) {
-    return buildProtectedCatalogReply();
+  const retrievedChunks = retrieveRelevantChunks(prompt);
+  const sources = toMessageSources(retrievedChunks);
+
+  if (!API_KEY) {
+    return {
+      content: buildLocalFallbackAnswer(prompt, retrievedChunks),
+      sources,
+    };
   }
+
+  const ragContext = retrievedChunks.length
+    ? buildRagContext(retrievedChunks)
+    : "Tidak ada konteks dokumen yang relevan untuk pertanyaan ini.";
 
   const messages = [
     { role: "system", content: chatbotConfig.systemInstruction },
-    ...history.map((msg) => ({
+    {
+      role: "system",
+      content:
+        "Konteks Dokumen:\n" +
+        ragContext +
+        "\n\nGunakan hanya konteks di atas. Jika tidak cukup, jawab bahwa informasi belum ditemukan pada dokumen yang tersedia.",
+    },
+    ...history.slice(-6).map((msg) => ({
       role: msg.role === "model" ? "assistant" : "user",
       content: msg.content,
     })),
@@ -109,7 +109,7 @@ export async function sendMessage(
     body: JSON.stringify({
       model: MODEL,
       messages,
-      temperature: 0.2,
+      temperature: 0.15,
     }),
   });
 
@@ -127,5 +127,8 @@ export async function sendMessage(
     throw new Error("Respons Groq kosong.");
   }
 
-  return sanitizePlainText(normalizeCatalogPrices(reply));
+  return {
+    content: sanitizePlainText(reply),
+    sources,
+  };
 }

@@ -12,7 +12,7 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]);
 
   return (
     <div className="chat-window">
@@ -28,6 +28,16 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
             {msg.role === "user" ? "Anda" : chatbotConfig.botName}:
           </strong>
           <p>{msg.content}</p>
+          {msg.sources && msg.sources.length > 0 && (
+            <div className="message-sources" aria-label="Sumber jawaban">
+              {msg.sources.map((source) => (
+                <span className="source-chip" key={source.id}>
+                  {source.title}
+                  <small>{source.section}</small>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       ))}
       {isLoading && (
