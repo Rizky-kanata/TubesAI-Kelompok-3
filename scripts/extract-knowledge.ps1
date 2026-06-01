@@ -2,10 +2,63 @@ $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$documentsPath = Join-Path $repoRoot "documents"
 $outputPath = Join-Path $repoRoot "src\data\knowledgeBase.ts"
 
-$documents = @(
+function ConvertTo-Slug {
+  param([Parameter(Mandatory = $true)][string]$Value)
+
+  $slug = $Value.ToLowerInvariant() -replace "[^a-z0-9]+", "-"
+  $slug = $slug.Trim("-")
+
+  if ($slug) {
+    return $slug
+  }
+
+  return "document"
+}
+
+function Get-DocumentTitle {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  return ([System.IO.Path]::GetFileNameWithoutExtension($Path) -replace "[-_]+", " ").Trim()
+}
+
+function Get-LocalDocuments {
+  if (-not (Test-Path -LiteralPath $documentsPath)) {
+    return @()
+  }
+
+  $files = Get-ChildItem -LiteralPath $documentsPath -File |
+    Where-Object { $_.Extension.ToLowerInvariant() -in @(".docx", ".pptx") -and $_.Name -notmatch "^~\$" } |
+    Sort-Object Name
+
+  $slugCounts = @{}
+  $localDocuments = @()
+
+  foreach ($file in $files) {
+    $slug = ConvertTo-Slug -Value $file.BaseName
+    if ($slugCounts.ContainsKey($slug)) {
+      $slugCounts[$slug] += 1
+      $id = "$slug-$($slugCounts[$slug])"
+    } else {
+      $slugCounts[$slug] = 1
+      $id = $slug
+    }
+
+    $localDocuments += @{
+      Id = $id
+      Title = Get-DocumentTitle -Path $file.FullName
+      Type = $file.Extension.TrimStart(".").ToLowerInvariant()
+      Path = $file.FullName
+    }
+  }
+
+  return $localDocuments
+}
+
+$fallbackDocuments = @(
   @{
     Id = "contoh-pertanyaan"
     Title = "Contoh Pertanyaan"
@@ -49,6 +102,15 @@ $documents = @(
     Path = "D:\Dokumen_RAG_Pendanaan_Ormawa_UKM\Syarat Pengajuan Proposal Dana Kegiatan.docx"
   }
 )
+
+$localDocuments = Get-LocalDocuments
+if ($localDocuments.Count -gt 0) {
+  $documents = $localDocuments
+  Write-Host "Using local documents from $documentsPath"
+} else {
+  $documents = $fallbackDocuments
+  Write-Warning "No .docx or .pptx files found in $documentsPath. Using fallback document paths."
+}
 
 function Read-ZipEntryText {
   param(

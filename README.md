@@ -12,11 +12,13 @@ Aplikasi membutuhkan `VITE_GROQ_API_KEY` di file `.env` agar jawaban dapat dipro
 
 ## Mengambil Data Dokumen
 
+Taruh file `.docx` atau `.pptx` di folder `documents`, lalu jalankan:
+
 ```bash
 npm run knowledge:extract
 ```
 
-Script `scripts/extract-knowledge.ps1` membaca file `.docx` dan `.pptx`, lalu menghasilkan `src/data/knowledgeBase.ts`. Jika lokasi dokumen berubah, sesuaikan daftar `$documents` di script tersebut.
+Script `scripts/extract-knowledge.ps1` membaca isi folder `documents`, lalu menghasilkan `src/data/knowledgeBase.ts`.
 
 ## Verifikasi
 

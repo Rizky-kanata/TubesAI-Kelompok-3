@@ -53,13 +53,45 @@ function buildProtectedKnowledgeReply(): BotReply {
   };
 }
 
+function formatLinkList(reply: string): string {
+  const urlPattern = /https?:\/\/\S+/g;
+  const matches = [...reply.matchAll(urlPattern)];
+
+  if (matches.length < 2 || matches[0].index === undefined) {
+    return reply;
+  }
+
+  const intro =
+    reply
+      .slice(0, matches[0].index)
+      .replace(/[:\s]+$/g, "")
+      .trim() || "Berikut link yang tersedia";
+
+  const items = matches.map((match, index) => {
+    const url = match[0].replace(/[.,;)]$/g, "");
+    const nextIndex = matches[index + 1]?.index ?? reply.length;
+    const description = reply
+      .slice((match.index ?? 0) + match[0].length, nextIndex)
+      .replace(/^[:\s,-]*(untuk|sebagai)\s+/i, "")
+      .replace(/[:\s,-]+$/g, "")
+      .trim();
+    const label = description || `Link ${index + 1}`;
+
+    return `${index + 1}. ${label}\nLink: ${url}`;
+  });
+
+  return `${intro}:\n${items.join("\n\n")}`;
+}
+
 function sanitizePlainText(reply: string): string {
-  return reply
+  const cleaned = reply
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/^#{1,6}\s*/gm, "")
     .replace(/^\s*[*+-]\s+/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  return formatLinkList(cleaned);
 }
 
 export async function sendMessage(
@@ -91,7 +123,9 @@ export async function sendMessage(
       content:
         "Konteks Dokumen:\n" +
         ragContext +
-        "\n\nGunakan hanya konteks di atas. Jika tidak cukup, jawab bahwa informasi belum ditemukan pada dokumen yang tersedia.",
+        "\n\nGunakan hanya konteks di atas. Jika tidak cukup, jawab bahwa informasi belum ditemukan pada dokumen yang tersedia. " +
+        "Jika pertanyaan meminta alur, cara, prosedur, tahapan, atau proses, susun jawaban sebagai langkah bernomor 1, 2, 3, dan seterusnya. " +
+        'Jika jawaban berisi link, tulis tiap link sebagai item bernomor dengan format "Nama kebutuhan" lalu baris "Link: URL".',
     },
     ...history.slice(-6).map((msg) => ({
       role: msg.role === "model" ? "assistant" : "user",

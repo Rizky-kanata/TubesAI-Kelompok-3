@@ -118,6 +118,120 @@ function countOccurrences(text: string, term: string): number {
   return count;
 }
 
+function isFlowQuery(query: string): boolean {
+  return /\b(alur|cara|prosedur|tahapan|langkah|proses|mengajukan|pengajuan)\b/i.test(
+    query
+  );
+}
+
+function isLinkQuery(query: string): boolean {
+  return /\b(link|tautan|form|url|pengumpulan|unggah|upload)\b/i.test(query);
+}
+
+function isFlowChunk(chunk: KnowledgeChunk): boolean {
+  return /\balur\b/i.test(`${chunk.title} ${chunk.section} ${chunk.content}`);
+}
+
+function isHeadingLine(line: string, chunk: KnowledgeChunk): boolean {
+  const normalizedLine = normalizeText(line);
+  const normalizedTitle = normalizeText(chunk.title);
+  const normalizedSection = normalizeText(chunk.section);
+
+  return (
+    normalizedLine === normalizedTitle ||
+    normalizedLine === normalizedSection ||
+    normalizedLine === "catatan:" ||
+    normalizedLine.startsWith("alur pengajuan")
+  );
+}
+
+function buildNumberedFlowAnswer(chunks: RetrievedChunk[]): string | null {
+  const seedChunk = chunks.find(isFlowChunk);
+
+  if (!seedChunk) {
+    return null;
+  }
+
+  const relatedChunks = knowledgeChunks
+    .filter(
+      (chunk) =>
+        chunk.title === seedChunk.title &&
+        chunk.section === seedChunk.section &&
+        isFlowChunk(chunk)
+    )
+    .sort((a, b) => knowledgeChunks.indexOf(a) - knowledgeChunks.indexOf(b));
+
+  const steps = relatedChunks
+    .flatMap((chunk) =>
+      chunk.content
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .filter((line) => !isHeadingLine(line, chunk))
+    )
+    .filter((line, index, lines) => lines.indexOf(line) === index);
+
+  if (steps.length === 0) {
+    return null;
+  }
+
+  const numberedSteps = steps.map((step, index) => `${index + 1}. ${step}`).join("\n");
+  return `Berikut alurnya:\n${numberedSteps}`;
+}
+
+function getLinkLabel(chunk: KnowledgeChunk, line: string): string {
+  const context = `${chunk.title} ${chunk.section} ${line}`.toLowerCase();
+
+  if (context.includes("sertifikasi") || context.includes("sertifikat")) {
+    return "Pengajuan nomor dan tanda tangan sertifikat kegiatan Ormawa/UKM";
+  }
+
+  if (context.includes("lpj") || context.includes("pertanggungjawaban")) {
+    return "Pengumpulan LPJ kegiatan";
+  }
+
+  if (context.includes("proposal") || context.includes("pendanaan")) {
+    return "Pengajuan proposal dana kegiatan Ormawa/UKM";
+  }
+
+  return chunk.title;
+}
+
+function buildNumberedLinkAnswer(chunks: RetrievedChunk[]): string | null {
+  const links = new Map<string, string>();
+
+  for (const chunk of chunks) {
+    const lines = chunk.content.split(/\n+/).map((line) => line.trim());
+
+    for (const line of lines) {
+      const urls = line.match(/https?:\/\/\S+/g);
+
+      if (!urls) {
+        continue;
+      }
+
+      for (const rawUrl of urls) {
+        const url = rawUrl.replace(/[.,;)]$/g, "");
+
+        if (!links.has(url)) {
+          links.set(url, getLinkLabel(chunk, line));
+        }
+      }
+    }
+  }
+
+  if (links.size === 0) {
+    return null;
+  }
+
+  const items = [...links.entries()]
+    .slice(0, 5)
+    .map(([url, label], index) => `${index + 1}. ${label}\nLink: ${url}`)
+    .join("\n\n");
+
+  return `Berikut link yang tersedia:\n${items}`;
+}
+
 function buildExcerpt(chunk: KnowledgeChunk, queryTokens: string[]): string {
   const lines = chunk.content
     .split(/\n+/)
@@ -203,7 +317,6 @@ export function buildRagContext(chunks: RetrievedChunk[]): string {
         `Sumber [${index + 1}]`,
         `Judul: ${chunk.title}`,
         `Bagian: ${chunk.section}`,
-        `File: ${chunk.source}`,
         `Isi: ${content}`,
       ].join("\n");
     })
@@ -244,11 +357,26 @@ export function buildLocalFallbackAnswer(query: string, chunks: RetrievedChunk[]
   const wantsSources = /\b(sumber|dokumen|file|referensi)\b/i.test(query);
 
   if (wantsSources) {
-    const sourceLines = toMessageSources(chunks)
-      .map((source, index) => `${index + 1}. ${source.title} (${source.source})`)
-      .join("\n");
+    return (
+      "Sumber data tersimpan di knowledge base internal aplikasi dan tidak ditampilkan di halaman. " +
+      "Silakan tanyakan isi informasi yang dibutuhkan, seperti alur proposal, syarat LPJ, atau sertifikasi."
+    );
+  }
 
-    return `Sumber dokumen yang paling relevan:\n${sourceLines}`;
+  if (isLinkQuery(query)) {
+    const linkAnswer = buildNumberedLinkAnswer(chunks);
+
+    if (linkAnswer) {
+      return linkAnswer;
+    }
+  }
+
+  if (isFlowQuery(query)) {
+    const flowAnswer = buildNumberedFlowAnswer(chunks);
+
+    if (flowAnswer) {
+      return flowAnswer;
+    }
   }
 
   const facts = chunks
