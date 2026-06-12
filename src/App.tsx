@@ -41,17 +41,26 @@ function App() {
     <div className="app-shell">
       <main className="chat-panel">
         <header className="chat-header">
-          <div>
-            <span className="status-line">
+          {/* Kiri: Logo */}
+          <div className="header-left">
+          </div>
+          
+          {/* Tengah: Teks utama */}
+          <div className="header-center">
+            <div className="status-line">
               <span className="status-dot" aria-hidden="true" />
-              Siap menjawab
-            </span>
+              SIAP MENJAWAB
+            </div>
             <h1>{chatbotConfig.botName}</h1>
             <p>{chatbotConfig.tagline}</p>
           </div>
-          <button className="clear-btn" type="button" onClick={handleClear}>
-            Chat Baru
-          </button>
+          
+          {/* Kanan: Tombol Chat Baru */}
+          <div className="header-right">
+            <button className="clear-btn" type="button" onClick={handleClear}>
+              💬 Chat Baru
+            </button>
+          </div>
         </header>
 
         <div className="quick-prompts" aria-label="Pertanyaan cepat">

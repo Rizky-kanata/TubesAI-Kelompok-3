@@ -1,14 +1,16 @@
 import type { ChatConfig } from "../types/Message";
 
 const chatbotConfig: ChatConfig = {
-  botName: "SSC Ormawa",
-  tagline: "Tanyakan alur, syarat, dan dokumen kegiatan Ormawa/UKM.",
+  botName: "Student Service Center",
+  tagline: "UKM dan Ormawa",
   inputPlaceholder: "Tanyakan alur, syarat, link, atau dokumen pendukung...",
   quickPrompts: [
     "Bagaimana cara mengajukan proposal dana kegiatan?",
     "Apa saja syarat LPJ kegiatan?",
-    "Bagaimana alur pengajuan sertifikasi kegiatan?",
-    "Apa link pengumpulan LPJ?",
+    "Apa saja syarat pengajuan proposal?",
+    "Bagaimana alur pengajuan sertifikat kegiatan?",
+    "Berikan link pengumpulan LPJ!",
+    "Berikan link pengumpulan proposal!"
   ],
   welcomeMessage:
     "Halo, saya siap membantu menjawab pertanyaan berdasarkan dokumen pendanaan Ormawa/UKM yang tersedia.",
