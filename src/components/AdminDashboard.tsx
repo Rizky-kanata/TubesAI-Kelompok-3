@@ -69,14 +69,6 @@ function AdminDashboard({
             <span>Dokumen Aktif</span>
             <strong>{summary.activeDocuments}</strong>
           </div>
-          <div className="admin-summary-item">
-            <span>Chunk Knowledge</span>
-            <strong>{summary.totalChunks}</strong>
-          </div>
-          <div className="admin-summary-item">
-            <span>Chunk Aktif</span>
-            <strong>{summary.activeChunks}</strong>
-          </div>
         </div>
 
         <div className="document-table" role="table" aria-label="Dokumen knowledge base">
@@ -96,7 +88,6 @@ function AdminDashboard({
 
               <div className="document-sections" role="cell">
                 <span>{document.sections.length} bagian</span>
-                <small>{document.chunkCount} chunk</small>
               </div>
 
               <div role="cell">

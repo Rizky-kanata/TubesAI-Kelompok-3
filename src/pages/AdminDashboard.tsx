@@ -12,120 +12,14 @@ import {
   updateUploadedKnowledgeDocument,
   type KnowledgeDocument,
 } from "../services/knowledgeAdminService";
+import {
+  extractDocumentText,
+  SUPPORTED_DOCUMENT_ACCEPT,
+} from "../utils/documentTextExtractor";
 import "../App.css";
 
 function getDefaultTitle(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
-}
-
-function readUint16(data: Uint8Array, offset: number): number {
-  return data[offset] | (data[offset + 1] << 8);
-}
-
-function readUint32(data: Uint8Array, offset: number): number {
-  return (
-    data[offset] |
-    (data[offset + 1] << 8) |
-    (data[offset + 2] << 16) |
-    (data[offset + 3] << 24)
-  ) >>> 0;
-}
-
-async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
-  if (typeof DecompressionStream === "undefined") {
-    throw new Error("Browser belum mendukung ekstraksi DOCX otomatis.");
-  }
-
-  const buffer = data.buffer.slice(
-    data.byteOffset,
-    data.byteOffset + data.byteLength
-  ) as ArrayBuffer;
-  const stream = new Blob([buffer]).stream().pipeThrough(
-    new DecompressionStream("deflate-raw")
-  );
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
-
-async function extractZipEntry(
-  data: Uint8Array,
-  targetFileName: string
-): Promise<Uint8Array> {
-  let endDirectoryOffset = -1;
-
-  for (let offset = data.length - 22; offset >= 0; offset -= 1) {
-    if (readUint32(data, offset) === 0x06054b50) {
-      endDirectoryOffset = offset;
-      break;
-    }
-  }
-
-  if (endDirectoryOffset === -1) {
-    throw new Error("Format DOCX tidak valid.");
-  }
-
-  const entryCount = readUint16(data, endDirectoryOffset + 10);
-  let directoryOffset = readUint32(data, endDirectoryOffset + 16);
-  const decoder = new TextDecoder("utf-8");
-
-  for (let index = 0; index < entryCount; index += 1) {
-    if (readUint32(data, directoryOffset) !== 0x02014b50) {
-      break;
-    }
-
-    const compressionMethod = readUint16(data, directoryOffset + 10);
-    const compressedSize = readUint32(data, directoryOffset + 20);
-    const fileNameLength = readUint16(data, directoryOffset + 28);
-    const extraLength = readUint16(data, directoryOffset + 30);
-    const commentLength = readUint16(data, directoryOffset + 32);
-    const localHeaderOffset = readUint32(data, directoryOffset + 42);
-    const fileName = decoder.decode(
-      data.slice(directoryOffset + 46, directoryOffset + 46 + fileNameLength)
-    );
-
-    if (fileName === targetFileName) {
-      const localFileNameLength = readUint16(data, localHeaderOffset + 26);
-      const localExtraLength = readUint16(data, localHeaderOffset + 28);
-      const dataStart =
-        localHeaderOffset + 30 + localFileNameLength + localExtraLength;
-      const compressedData = data.slice(dataStart, dataStart + compressedSize);
-
-      if (compressionMethod === 0) {
-        return compressedData;
-      }
-
-      if (compressionMethod === 8) {
-        return inflateRaw(compressedData);
-      }
-
-      throw new Error("Metode kompresi DOCX tidak didukung.");
-    }
-
-    directoryOffset += 46 + fileNameLength + extraLength + commentLength;
-  }
-
-  throw new Error("Isi DOCX tidak ditemukan.");
-}
-
-async function extractDocxText(file: File): Promise<string> {
-  const data = new Uint8Array(await file.arrayBuffer());
-  const documentXml = new TextDecoder("utf-8").decode(
-    await extractZipEntry(data, "word/document.xml")
-  );
-  const xmlDocument = new DOMParser().parseFromString(
-    documentXml,
-    "application/xml"
-  );
-  const paragraphs = Array.from(xmlDocument.getElementsByTagName("w:p"));
-  const lines = paragraphs
-    .map((paragraph) =>
-      Array.from(paragraph.getElementsByTagName("w:t"))
-        .map((node) => node.textContent || "")
-        .join("")
-        .trim()
-    )
-    .filter(Boolean);
-
-  return lines.join("\n");
 }
 
 function AdminDashboard() {
@@ -180,20 +74,10 @@ function AdminDashboard() {
       return;
     }
 
-    const fileExtension = file.name.split(".").pop()?.toLowerCase();
-
-    if (fileExtension === "pdf") {
-      setNotice(
-        "Upload PDF belum diproses otomatis. Salin isi dokumen ke kolom isi dokumen."
-      );
-      event.target.value = "";
-      return;
-    }
-
     let text: string;
 
     try {
-      text = fileExtension === "docx" ? await extractDocxText(file) : await file.text();
+      text = await extractDocumentText(file);
     } catch (error) {
       setNotice(
         error instanceof Error
@@ -353,21 +237,13 @@ function AdminDashboard() {
             <span>Dokumen Aktif</span>
             <strong>{summary.activeDocuments}</strong>
           </div>
-          <div className="admin-summary-item">
-            <span>Chunk</span>
-            <strong>{summary.totalChunks}</strong>
-          </div>
-          <div className="admin-summary-item">
-            <span>Chunk Aktif</span>
-            <strong>{summary.activeChunks}</strong>
-          </div>
         </div>
 
         <form className="admin-upload-panel" onSubmit={handleCreateDocument}>
           <div className="admin-upload-header">
             <h2>Upload Dokumen Baru</h2>
             <input
-              accept=".txt,.md,.csv,.json,.docx"
+              accept={SUPPORTED_DOCUMENT_ACCEPT}
               aria-label="Pilih file dokumen teks"
               onChange={handleFileChange}
               type="file"
