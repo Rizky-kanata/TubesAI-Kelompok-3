@@ -160,7 +160,7 @@ body {
 }
 
 .clear-btn:hover {
-  background: #ff8478;
+  background: #f3d2d0;
   box-shadow: 0 10px 22px rgba(29, 78, 216, 0.12);
   transform: translateY(-1px);
   border-radius: 30px;
