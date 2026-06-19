@@ -1,4 +1,5 @@
 import { knowledgeChunks, type KnowledgeChunk } from "../data/knowledgeBase";
+import { getActiveKnowledgeSources } from "./knowledgeAdminService";
 import type { MessageSource } from "../types/Message";
 
 export interface RetrievedChunk extends KnowledgeChunk {
@@ -291,12 +292,14 @@ function scoreChunk(chunk: KnowledgeChunk, query: string, queryTokens: string[])
 export function retrieveRelevantChunks(query: string, limit = 5): RetrievedChunk[] {
   const baseTokens = tokenize(query);
   const queryTokens = expandTokens(baseTokens);
+  const activeSources = new Set(getActiveKnowledgeSources());
 
   if (queryTokens.length === 0) {
     return [];
   }
 
   return knowledgeChunks
+    .filter((chunk) => activeSources.has(chunk.source))
     .map((chunk) => ({
       ...chunk,
       score: scoreChunk(chunk, query, queryTokens),
