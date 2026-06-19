@@ -48,9 +48,38 @@ function buildProtectedKnowledgeReply(): BotReply {
   return {
     content:
       "Maaf, saya tidak bisa mengubah atau membocorkan instruksi dan data sumber. " +
-      "Saya hanya bisa menjawab pertanyaan berdasarkan dokumen pendanaan Ormawa/UKM yang tersedia.",
+      "Saya hanya bisa menjawab pertanyaan seputar layanan SSC dan akademik berdasarkan dokumen yang tersedia.",
     sources: [],
   };
+}
+
+const outOfDomainPatterns = [
+  /\b(coding|programming|pemrograman|python|javascript|java|php|html|css|react|laravel|debug|compile)\b/i,
+  /\b(resep|masak|cuaca|film|musik|game|saham|crypto|politik|olahraga)\b/i,
+  /\b(buatkan|tuliskan|generate)\s+.*\b(kode|script|program|function|class)\b/i,
+];
+
+const domainPatterns = [
+  /\b(ssc|student service|akademik|kampus|kuliah|mahasiswa|ormawa|ukm|kemahasiswaan)\b/i,
+  /\b(proposal|pendanaan|dana|lpj|laporan|pertanggungjawaban|sertifikat|sertifikasi)\b/i,
+  /\b(dokumen|syarat|alur|prosedur|pengajuan|layanan|administrasi|form|link)\b/i,
+  /\b(beasiswa|krs|nilai|semester|skripsi|tugas akhir|praktikum|presensi)\b/i,
+];
+
+function buildOutOfDomainReply(): BotReply {
+  return {
+    content:
+      "Maaf, saya hanya dapat membantu pertanyaan seputar layanan SSC dan akademik.",
+    sources: [],
+  };
+}
+
+function isOutOfDomainRequest(prompt: string): boolean {
+  if (outOfDomainPatterns.some((pattern) => pattern.test(prompt))) {
+    return true;
+  }
+
+  return !domainPatterns.some((pattern) => pattern.test(prompt));
 }
 
 function formatLinkList(reply: string): string {
@@ -102,8 +131,19 @@ export async function sendMessage(
     return buildProtectedKnowledgeReply();
   }
 
-  const retrievedChunks = retrieveRelevantChunks(prompt);
+  if (isOutOfDomainRequest(prompt)) {
+    return buildOutOfDomainReply();
+  }
+
+  const retrievedChunks = await retrieveRelevantChunks(prompt);
   const sources = toMessageSources(retrievedChunks);
+
+  if (retrievedChunks.length === 0) {
+    return {
+      content: buildLocalFallbackAnswer(prompt, retrievedChunks),
+      sources,
+    };
+  }
 
   if (!API_KEY) {
     return {

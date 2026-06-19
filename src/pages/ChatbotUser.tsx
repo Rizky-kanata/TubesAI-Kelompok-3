@@ -36,6 +36,41 @@ function ChatbotUser() {
     }
   };
 
+  const handleEditUserMessage = async (
+    messageIndex: number,
+    content: string
+  ) => {
+    if (isLoading || !content.trim()) {
+      return;
+    }
+
+    const previousMessages = messages.slice(0, messageIndex);
+    const editedMessage: Message = { role: "user", content: content.trim() };
+    const nextMessages = [...previousMessages, editedMessage];
+
+    setMessages(nextMessages);
+    setIsLoading(true);
+
+    try {
+      const reply = await sendMessage(editedMessage.content, previousMessages);
+      const botMessage: Message = {
+        role: "model",
+        content: reply.content,
+        sources: reply.sources,
+      };
+      setMessages([...nextMessages, botMessage]);
+    } catch {
+      const errorMessage: Message = {
+        role: "model",
+        content:
+          "Maaf, layanan model sedang tidak bisa dihubungi. Coba lagi beberapa saat lagi.",
+      };
+      setMessages([...nextMessages, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleClear = () => setMessages([]);
 
   const handleLogout = () => {
@@ -82,7 +117,11 @@ function ChatbotUser() {
           ))}
         </div>
 
-        <ChatWindow messages={messages} isLoading={isLoading} />
+        <ChatWindow
+          messages={messages}
+          isLoading={isLoading}
+          onEditUserMessage={handleEditUserMessage}
+        />
         <ChatInput
           onSend={handleSend}
           isLoading={isLoading}

@@ -1,5 +1,9 @@
-import { knowledgeChunks, type KnowledgeChunk } from "../data/knowledgeBase";
-import { getActiveKnowledgeSources } from "./knowledgeAdminService";
+import type { KnowledgeChunk } from "../data/knowledgeBase";
+import {
+  getActiveKnowledgeSources,
+  getAllKnowledgeChunks,
+  getAllKnowledgeChunksSync,
+} from "./knowledgeAdminService";
 import type { MessageSource } from "../types/Message";
 
 export interface RetrievedChunk extends KnowledgeChunk {
@@ -146,21 +150,24 @@ function isHeadingLine(line: string, chunk: KnowledgeChunk): boolean {
   );
 }
 
-function buildNumberedFlowAnswer(chunks: RetrievedChunk[]): string | null {
+function buildNumberedFlowAnswer(
+  chunks: RetrievedChunk[],
+  allChunks = getAllKnowledgeChunksSync()
+): string | null {
   const seedChunk = chunks.find(isFlowChunk);
 
   if (!seedChunk) {
     return null;
   }
 
-  const relatedChunks = knowledgeChunks
+  const relatedChunks = allChunks
     .filter(
       (chunk) =>
         chunk.title === seedChunk.title &&
         chunk.section === seedChunk.section &&
         isFlowChunk(chunk)
     )
-    .sort((a, b) => knowledgeChunks.indexOf(a) - knowledgeChunks.indexOf(b));
+    .sort((a, b) => allChunks.indexOf(a) - allChunks.indexOf(b));
 
   const steps = relatedChunks
     .flatMap((chunk) =>
@@ -289,16 +296,20 @@ function scoreChunk(chunk: KnowledgeChunk, query: string, queryTokens: string[])
   return score;
 }
 
-export function retrieveRelevantChunks(query: string, limit = 5): RetrievedChunk[] {
+export async function retrieveRelevantChunks(
+  query: string,
+  limit = 5
+): Promise<RetrievedChunk[]> {
   const baseTokens = tokenize(query);
   const queryTokens = expandTokens(baseTokens);
   const activeSources = new Set(getActiveKnowledgeSources());
+  const allChunks = await getAllKnowledgeChunks();
 
   if (queryTokens.length === 0) {
     return [];
   }
 
-  return knowledgeChunks
+  return allChunks
     .filter((chunk) => activeSources.has(chunk.source))
     .map((chunk) => ({
       ...chunk,
@@ -349,7 +360,11 @@ export function toMessageSources(chunks: RetrievedChunk[], limit = 4): MessageSo
   return [...sources.values()];
 }
 
-export function buildLocalFallbackAnswer(query: string, chunks: RetrievedChunk[]): string {
+export function buildLocalFallbackAnswer(
+  query: string,
+  chunks: RetrievedChunk[],
+  allChunks = getAllKnowledgeChunksSync()
+): string {
   if (chunks.length === 0) {
     return (
       "Saya belum menemukan informasi yang cocok pada dokumen yang tersedia. " +
@@ -375,7 +390,7 @@ export function buildLocalFallbackAnswer(query: string, chunks: RetrievedChunk[]
   }
 
   if (isFlowQuery(query)) {
-    const flowAnswer = buildNumberedFlowAnswer(chunks);
+    const flowAnswer = buildNumberedFlowAnswer(chunks, allChunks);
 
     if (flowAnswer) {
       return flowAnswer;

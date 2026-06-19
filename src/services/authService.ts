@@ -66,7 +66,13 @@ export const login = (
   const user = users.find((u) => u.email === email && u.password === password);
   if (!user) return { success: false, message: "Email atau password salah!" };
 
-  const { password: _pw, ...safeUser } = user;
+  const safeUser = {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    createdAt: user.createdAt,
+  };
   localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(safeUser));
   return { success: true, message: "Login berhasil!", role: user.role };
 };
