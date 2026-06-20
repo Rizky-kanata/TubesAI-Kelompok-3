@@ -2,6 +2,7 @@ import chatbotConfig from "../config/chatbotConfig";
 import type { BotReply, Message } from "../types/Message";
 import {
   buildLocalFallbackAnswer,
+  buildRequestedSubmissionLinkAnswer,
   buildRagContext,
   retrieveRelevantChunks,
   toMessageSources,
@@ -60,10 +61,10 @@ const outOfDomainPatterns = [
 ];
 
 const domainPatterns = [
-  /\b(ssc|student service|akademik|kampus|kuliah|mahasiswa|ormawa|ukm|kemahasiswaan)\b/i,
-  /\b(proposal|pendanaan|dana|lpj|laporan|pertanggungjawaban|sertifikat|sertifikasi)\b/i,
-  /\b(dokumen|syarat|alur|prosedur|pengajuan|layanan|administrasi|form|link)\b/i,
-  /\b(beasiswa|krs|nilai|semester|skripsi|tugas akhir|praktikum|presensi)\b/i,
+  /\b(ssc|student service|student service center|akademik|kampus|kuliah|mahasiswa|ormawa|ukm|kemahasiswaan|tak)\b/i,
+  /\b(proposal|pendanaan|dana|lpj|laporan|pertanggungjawaban|sertifikat|sertifikasi|template)\b/i,
+  /\b(dokumen|syarat|alur|prosedur|pengajuan|layanan|administrasi|form|link|tautan|kontak|whatsapp|wa)\b/i,
+  /\b(beasiswa|krs|nilai|semester|skripsi|tugas akhir|praktikum|presensi|transkrip aktivitas kemahasiswaan)\b/i,
 ];
 
 function buildOutOfDomainReply(): BotReply {
@@ -133,6 +134,15 @@ export async function sendMessage(
 
   if (isOutOfDomainRequest(prompt)) {
     return buildOutOfDomainReply();
+  }
+
+  const submissionLinkAnswer = buildRequestedSubmissionLinkAnswer(prompt);
+
+  if (submissionLinkAnswer) {
+    return {
+      content: submissionLinkAnswer,
+      sources: [],
+    };
   }
 
   const retrievedChunks = await retrieveRelevantChunks(prompt);

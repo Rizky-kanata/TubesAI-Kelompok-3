@@ -62,6 +62,10 @@ const queryExpansions = [
     terms: ["sertifikat", "sertifikasi", "nomor", "tanda", "tangan", "desain"],
   },
   {
+    matches: ["tak", "transkrip", "aktivitas", "kemahasiswaan"],
+    terms: ["tak", "transkrip", "aktivitas", "kemahasiswaan", "panduan"],
+  },
+  {
     matches: ["link", "form", "tautan", "url"],
     terms: ["link", "form", "https", "office", "tel-u"],
   },
@@ -108,19 +112,89 @@ function expandTokens(tokens: string[]): string[] {
 }
 
 function countOccurrences(text: string, term: string): number {
-  if (!term) {
+  const normalizedTerm = normalizeText(term);
+
+  if (!normalizedTerm) {
     return 0;
   }
 
-  let count = 0;
-  let index = text.indexOf(term);
+  return normalizeText(text)
+    .split(" ")
+    .filter((token) => token === normalizedTerm).length;
+}
 
-  while (index !== -1) {
-    count += 1;
-    index = text.indexOf(term, index + term.length);
+function containsExactTerm(text: string, term: string): boolean {
+  return countOccurrences(text, term) > 0;
+}
+
+function extractFaqQuestion(content: string): string | null {
+  const match = content.match(/^Question\s*:\s*(.+)$/im);
+  return match?.[1]?.trim() || null;
+}
+
+function extractFaqAnswer(content: string): string | null {
+  const marker = /^Answer\s*:\s*/im.exec(content);
+
+  if (!marker || marker.index === undefined) {
+    return null;
   }
 
-  return count;
+  const answer = content
+    .slice(marker.index + marker[0].length)
+    .replace(/\n={5,}\s*\n[^\n]+\n={5,}\s*$/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return answer || null;
+}
+
+function buildDirectFaqAnswer(
+  query: string,
+  chunks: RetrievedChunk[]
+): string | null {
+  const queryTokens = new Set(tokenize(query));
+
+  if (queryTokens.size === 0) {
+    return null;
+  }
+
+  const candidates = chunks
+    .map((chunk) => {
+      const question = extractFaqQuestion(chunk.content);
+      const answer = extractFaqAnswer(chunk.content);
+
+      if (!question || !answer) {
+        return null;
+      }
+
+      const questionTokens = tokenize(question);
+      const overlap = questionTokens.filter((token) =>
+        queryTokens.has(token)
+      ).length;
+      const overlapRatio = overlap / Math.max(queryTokens.size, 1);
+      const exactMatch =
+        normalizeText(question) === normalizeText(query);
+
+      return {
+        answer,
+        score: exactMatch ? 2 : overlapRatio,
+      };
+    })
+    .filter(
+      (
+        candidate
+      ): candidate is {
+        answer: string;
+        score: number;
+      } => Boolean(candidate)
+    )
+    .sort((a, b) => b.score - a.score);
+
+  if (!candidates.length || candidates[0].score < 0.6) {
+    return null;
+  }
+
+  return candidates[0].answer;
 }
 
 function isFlowQuery(query: string): boolean {
@@ -188,10 +262,33 @@ function buildNumberedFlowAnswer(
 }
 
 function getLinkLabel(chunk: KnowledgeChunk, line: string): string {
-  const context = `${chunk.title} ${chunk.section} ${line}`.toLowerCase();
+  const context = `${chunk.title} ${chunk.section} ${chunk.content} ${line}`.toLowerCase();
+
+  if (context.includes("tak") || context.includes("transkrip aktivitas")) {
+    return "Panduan TAK";
+  }
+
+  if (
+    context.includes("template") &&
+    (context.includes("lpj") || context.includes("pertanggungjawaban"))
+  ) {
+    return "Template LPJ kegiatan";
+  }
+
+  if (context.includes("template") && context.includes("proposal")) {
+    return "Template proposal kegiatan";
+  }
 
   if (context.includes("sertifikasi") || context.includes("sertifikat")) {
-    return "Pengajuan nomor dan tanda tangan sertifikat kegiatan Ormawa/UKM";
+    return "Pengajuan tanda tangan sertifikat kegiatan";
+  }
+
+  if (context.includes("instagram")) {
+    return "Instagram SSC/Kemahasiswaan";
+  }
+
+  if (context.includes("whatsapp") || context.includes("6281132212000")) {
+    return "WhatsApp SSC/Kemahasiswaan";
   }
 
   if (context.includes("lpj") || context.includes("pertanggungjawaban")) {
@@ -199,10 +296,132 @@ function getLinkLabel(chunk: KnowledgeChunk, line: string): string {
   }
 
   if (context.includes("proposal") || context.includes("pendanaan")) {
-    return "Pengajuan proposal dana kegiatan Ormawa/UKM";
+    return "Pengajuan proposal kegiatan";
   }
 
   return chunk.title;
+}
+
+
+function extractUrls(content: string): string[] {
+  return (content.match(/https?:\/\/\S+/g) || []).map((url) =>
+    url.replace(/[.,;)]$/g, "")
+  );
+}
+
+function findSubmissionUrl(
+  entity: "proposal" | "lpj",
+  chunks: KnowledgeChunk[]
+): string | null {
+  const candidates = chunks
+    .map((chunk) => {
+      const text = normalizeText(`${chunk.section} ${chunk.content}`);
+      const urls = extractUrls(chunk.content);
+
+      if (urls.length === 0) {
+        return null;
+      }
+
+      const hasEntity =
+        entity === "proposal"
+          ? containsExactTerm(text, "proposal")
+          : containsExactTerm(text, "lpj") || text.includes("pertanggungjawaban");
+
+      if (!hasEntity) {
+        return null;
+      }
+
+      let score = 0;
+
+      if (/dikumpulkan|pengumpulan|unggah|upload/.test(text)) {
+        score += 30;
+      }
+
+      if (entity === "proposal" && /proposal kegiatan dapat dikumpulkan/.test(text)) {
+        score += 35;
+      }
+
+      if (entity === "lpj" && /lpj kegiatan dapat dikumpulkan|soft copy lpj/.test(text)) {
+        score += 35;
+      }
+
+      if (/template/.test(text)) {
+        score -= 50;
+      }
+
+      const preferredUrl =
+        urls.find((url) => /forms\.office\.com/i.test(url)) || urls[0];
+
+      if (/forms\.office\.com/i.test(preferredUrl)) {
+        score += 15;
+      }
+
+      return { url: preferredUrl, score };
+    })
+    .filter(
+      (candidate): candidate is { url: string; score: number } =>
+        Boolean(candidate)
+    )
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.score > 0 ? candidates[0].url : null;
+}
+
+export function buildRequestedSubmissionLinkAnswer(
+  query: string,
+  allChunks = getAllKnowledgeChunksSync()
+): string | null {
+  const normalizedQuery = normalizeText(query);
+  const asksForCollection =
+    /pengumpulan|dikumpulkan|mengumpulkan|kumpul|unggah|upload/.test(
+      normalizedQuery
+    );
+
+  if (!asksForCollection) {
+    return null;
+  }
+
+  const activeSources = new Set(getActiveKnowledgeSources());
+  const activeChunks = allChunks.filter((chunk) =>
+    activeSources.has(chunk.source)
+  );
+  const wantsProposal = containsExactTerm(normalizedQuery, "proposal");
+  const wantsLpj =
+    containsExactTerm(normalizedQuery, "lpj") ||
+    normalizedQuery.includes("pertanggungjawaban");
+  const items: Array<{ label: string; url: string }> = [];
+
+  if (wantsProposal) {
+    const proposalUrl = findSubmissionUrl("proposal", activeChunks);
+
+    if (proposalUrl) {
+      items.push({
+        label: "Pengumpulan proposal kegiatan",
+        url: proposalUrl,
+      });
+    }
+  }
+
+  if (wantsLpj) {
+    const lpjUrl = findSubmissionUrl("lpj", activeChunks);
+
+    if (lpjUrl) {
+      items.push({
+        label: "Pengumpulan LPJ kegiatan",
+        url: lpjUrl,
+      });
+    }
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  const formattedItems = items
+    .map(({ label, url }, index) => `${index + 1}. ${label}\nLink: ${url}`)
+    .join("\n\n");
+
+  return `Berikut link pengumpulan yang tersedia:\n${formattedItems}`;
 }
 
 function buildNumberedLinkAnswer(chunks: RetrievedChunk[]): string | null {
@@ -241,18 +460,25 @@ function buildNumberedLinkAnswer(chunks: RetrievedChunk[]): string | null {
 }
 
 function buildExcerpt(chunk: KnowledgeChunk, queryTokens: string[]): string {
+  const faqAnswer = extractFaqAnswer(chunk.content);
+
+  if (faqAnswer) {
+    return faqAnswer.length > 700
+      ? `${faqAnswer.slice(0, 697).trim()}...`
+      : faqAnswer;
+  }
+
   const lines = chunk.content
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
 
-  const matchingLine = lines.find((line) => {
-    const normalizedLine = normalizeText(line);
-    return queryTokens.some((token) => normalizedLine.includes(token));
-  });
+  const matchingLine = lines.find((line) =>
+    queryTokens.some((token) => containsExactTerm(line, token))
+  );
 
   const excerpt = matchingLine || lines.slice(0, 2).join(" ");
-  return excerpt.length > 260 ? `${excerpt.slice(0, 257).trim()}...` : excerpt;
+  return excerpt.length > 400 ? `${excerpt.slice(0, 397).trim()}...` : excerpt;
 }
 
 function scoreChunk(chunk: KnowledgeChunk, query: string, queryTokens: string[]): number {
@@ -262,7 +488,7 @@ function scoreChunk(chunk: KnowledgeChunk, query: string, queryTokens: string[])
   let score = 0;
 
   for (const token of queryTokens) {
-    if (titleText.includes(token)) {
+    if (containsExactTerm(titleText, token)) {
       score += 8;
     }
 
@@ -381,12 +607,24 @@ export function buildLocalFallbackAnswer(
     );
   }
 
+  const submissionLinkAnswer = buildRequestedSubmissionLinkAnswer(query, allChunks);
+
+  if (submissionLinkAnswer) {
+    return submissionLinkAnswer;
+  }
+
   if (isLinkQuery(query)) {
     const linkAnswer = buildNumberedLinkAnswer(chunks);
 
     if (linkAnswer) {
       return linkAnswer;
     }
+  }
+
+  const directFaqAnswer = buildDirectFaqAnswer(query, chunks);
+
+  if (directFaqAnswer) {
+    return directFaqAnswer;
   }
 
   if (isFlowQuery(query)) {

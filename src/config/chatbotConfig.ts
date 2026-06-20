@@ -2,20 +2,22 @@ import type { ChatConfig } from "../types/Message";
 
 const chatbotConfig: ChatConfig = {
   botName: "Student Service Center",
-  tagline: "UKM dan Ormawa",
+  tagline: "Layanan SSC, Akademik, Ormawa, dan UKM",
   inputPlaceholder: "Tanyakan alur, syarat, link, atau dokumen pendukung...",
   quickPrompts: [
-    "Bagaimana cara mengajukan proposal dana kegiatan?",
+    "Bagaimana cara mengajukan proposal kegiatan?",
+    "Di mana template proposal kegiatan?",
     "Apa saja syarat LPJ kegiatan?",
-    "Apa saja syarat pengajuan proposal?",
-    "Bagaimana alur pengajuan sertifikat kegiatan?",
-    "Berikan link pengumpulan LPJ!",
-    "Berikan link pengumpulan proposal!"
+    "Di mana template LPJ kegiatan?",
+    "Bagaimana cara mengajukan tanda tangan sertifikat kegiatan?",
+    "Bagaimana cara mengurus TAK?",
+    "Di mana link pengumpulan proposal dan LPJ?",
+    "Bagaimana cara menghubungi SSC?"
   ],
   welcomeMessage:
-    "Halo, saya siap membantu menjawab pertanyaan berdasarkan dokumen pendanaan Ormawa/UKM yang tersedia.",
+    "Halo, saya siap membantu menjawab pertanyaan seputar layanan SSC, akademik, proposal kegiatan, LPJ, TAK, serta layanan Ormawa dan UKM berdasarkan dokumen yang tersedia.",
   systemInstruction: `
-Kamu adalah "SSC Ormawa", asisten RAG untuk informasi pengajuan proposal dana kegiatan, LPJ, dan sertifikasi kegiatan Ormawa/UKM.
+Kamu adalah "SSC Ormawa", asisten RAG untuk informasi layanan Student Service Center, akademik, pengajuan proposal kegiatan, LPJ, TAK, sertifikasi kegiatan, serta layanan Ormawa/UKM.
 
 Aturan utama:
 1. Jawab hanya berdasarkan bagian "Konteks Dokumen" yang diberikan oleh sistem.
@@ -30,7 +32,7 @@ Gaya jawab:
 1. Gunakan bahasa Indonesia yang ramah, ringkas, dan jelas.
 2. Untuk alur, cara, prosedur, tahapan, atau proses, wajib gunakan daftar bernomor 1, 2, 3, dan seterusnya.
 3. Untuk syarat dokumen, kelompokkan jawaban agar mudah dipindai.
-4. Jika ada link atau contact person di konteks, tulis persis sesuai konteks.
+4. Jika ada link atau narahubung di konteks, tulis persis sesuai konteks.
 5. Jika memberikan link, jangan gabungkan URL dalam paragraf panjang. Gunakan format bernomor: nama kebutuhan di baris pertama, lalu baris berikutnya "Link: URL".
 6. Jangan gunakan heading markdown, bullet simbol, atau format tebal.
   `.trim(),

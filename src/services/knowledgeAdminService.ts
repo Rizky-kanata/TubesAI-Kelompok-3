@@ -423,6 +423,42 @@ export function resetActiveKnowledgeSources() {
   }
 }
 
+function chunkFaqDocumentContent(document: {
+  id: string;
+  title: string;
+  section: string;
+  source: string;
+  content: string;
+}): KnowledgeChunk[] | null {
+  const normalizedContent = document.content
+    .replace(/\r\n?/g, "\n")
+    .trim();
+  const questionPattern = /^Question\s*:\s*(.+)$/gim;
+  const matches = [...normalizedContent.matchAll(questionPattern)];
+
+  if (matches.length < 2) {
+    return null;
+  }
+
+  return matches.map((match, index) => {
+    const start = match.index ?? 0;
+    const end = matches[index + 1]?.index ?? normalizedContent.length;
+    const question = match[1].trim();
+    const content = normalizedContent
+      .slice(start, end)
+      .replace(/\n={5,}\s*\n[^\n]+\n={5,}\s*$/g, "")
+      .trim();
+
+    return {
+      id: `${document.id}-faq-${index + 1}`,
+      title: document.title,
+      section: `${document.section} - ${question}`.slice(0, 180),
+      source: document.source,
+      content,
+    };
+  });
+}
+
 function chunkDocumentContent(document: {
   id: string;
   title: string;
@@ -430,6 +466,12 @@ function chunkDocumentContent(document: {
   source: string;
   content: string;
 }): KnowledgeChunk[] {
+  const faqChunks = chunkFaqDocumentContent(document);
+
+  if (faqChunks) {
+    return faqChunks;
+  }
+
   const paragraphs = document.content
     .split(/\n{2,}/)
     .map((paragraph) => paragraph.trim())
