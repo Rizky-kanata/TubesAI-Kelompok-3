@@ -71,6 +71,10 @@ const queryExpansions = [
     terms: ["link", "form", "https", "office", "tel-u"],
   },
   {
+    matches: ["file", "download", "unduh", "pdf", "word", "docx", "excel", "xlsx"],
+    terms: ["file", "dokumen", "download", "unduh", "pdf", "word", "excel"],
+  },
+  {
     matches: ["kontak", "contact", "cp", "whatsapp", "wa"],
     terms: ["contact", "person", "whatsapp", "wa", "vio", "0821"],
   },
@@ -385,7 +389,8 @@ function isLinkQuery(query: string): boolean {
 export function isDocumentFileRequest(query: string): boolean {
   return (
     /\b(file|download|unduh|donlod|dolownd)\b/i.test(query) ||
-    /\b(minta|mintakan|kasih|beri|berikan)\b.*\bdokumen\b/i.test(query)
+    /\b(minta|mintakan|kasih|beri|berikan|kirim)\b.*\bdokumen\b/i.test(query) ||
+    /\b(minta|mintakan|kasih|beri|berikan|kirim)\b.*\b(pdf|word|doc|docx|excel|xls|xlsx|xlsm|csv)\b/i.test(query)
   );
 }
 
@@ -816,6 +821,41 @@ function matchesAnyTerm(text: string, terms: string[]): boolean {
   );
 }
 
+function getRequestedFileExtensions(query: string): string[] {
+  const normalizedQuery = normalizeText(query);
+  const extensions: string[] = [];
+
+  if (containsExactTerm(normalizedQuery, "pdf")) {
+    extensions.push("pdf");
+  }
+
+  if (
+    containsExactTerm(normalizedQuery, "word") ||
+    containsExactTerm(normalizedQuery, "doc") ||
+    containsExactTerm(normalizedQuery, "docx")
+  ) {
+    extensions.push("doc", "docx");
+  }
+
+  if (
+    containsExactTerm(normalizedQuery, "excel") ||
+    containsExactTerm(normalizedQuery, "xls") ||
+    containsExactTerm(normalizedQuery, "xlsx") ||
+    containsExactTerm(normalizedQuery, "xlsm") ||
+    containsExactTerm(normalizedQuery, "csv") ||
+    containsExactTerm(normalizedQuery, "spreadsheet")
+  ) {
+    extensions.push("xls", "xlsx", "xlsm", "csv");
+  }
+
+  return extensions;
+}
+
+function sourceMatchesExtensions(source: string, extensions: string[]): boolean {
+  const extension = source.split(".").pop()?.toLowerCase() || "";
+  return extensions.includes(extension);
+}
+
 export function getDocumentFileRequestChunks(
   query: string,
   chunks: RetrievedChunk[],
@@ -827,6 +867,15 @@ export function getDocumentFileRequestChunks(
 
   const queryTokens = new Set(tokenize(query));
   let candidates = [...chunks];
+  const requestedExtensions = getRequestedFileExtensions(query);
+
+  if (requestedExtensions.length > 0) {
+    const filteredCandidates = candidates.filter((chunk) =>
+      sourceMatchesExtensions(chunk.source, requestedExtensions)
+    );
+
+    candidates = filteredCandidates;
+  }
 
   const entityFilters: Array<{ active: boolean; terms: string[] }> = [
     {
@@ -924,7 +973,7 @@ export function buildDocumentFileRequestAnswer(
     return "Saya belum menemukan file yang cocok dengan permintaan tersebut.";
   }
 
-  return "Berikut file yang sesuai. Silakan klik tombol Download file di bawah jawaban ini.";
+  return "Berikut file yang sesuai. Silakan klik tombol download di bawah jawaban ini.";
 }
 
 export function buildLocalFallbackAnswer(

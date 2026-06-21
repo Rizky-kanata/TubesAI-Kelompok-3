@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Message, MessageSource } from "../types/Message";
+import type { DownloadableFile, Message, MessageSource } from "../types/Message";
 import chatbotConfig from "../config/chatbotConfig";
 import { getKnowledgeDocuments } from "../services/knowledgeAdminService";
 
@@ -7,6 +7,16 @@ interface ChatWindowProps {
   messages: Message[];
   isLoading: boolean;
   onEditUserMessage: (messageIndex: number, content: string) => void;
+}
+
+interface DownloadableSource {
+  source: MessageSource;
+  title: string;
+  fileName: string;
+  fileType?: string;
+  fileData?: string;
+  fileUrl?: string;
+  content: string;
 }
 
 function cleanUrl(value: string): string {
@@ -21,24 +31,64 @@ function getUrlHost(value: string): string {
   }
 }
 
-function getSafeFileName(value: string): string {
-  const fileName = value
-    .replace(/\.[^.]+$/, "")
-    .replace(/[^a-z0-9-_\s]/gi, " ")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
-
-  return `${fileName || "dokumen"}.txt`;
+function getSafeBaseName(value: string): string {
+  return (
+    value
+      .replace(/\.[^.]+$/, "")
+      .replace(/[^a-z0-9-_\s]/gi, " ")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 80) || "dokumen"
+  );
 }
 
-function getDownloadableSources(sources: MessageSource[] = []) {
+function getSafeOriginalFileName(value: string): string {
+  const extension = value.match(/\.([a-z0-9]{1,10})$/i)?.[1]?.toLowerCase();
+  return `${getSafeBaseName(value)}.${extension || "bin"}`;
+}
+
+function getFileKind(fileName: string): string {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+
+  if (extension === "pdf") {
+    return "PDF";
+  }
+
+  if (extension === "doc" || extension === "docx") {
+    return "Word";
+  }
+
+  if (extension === "xls" || extension === "xlsx" || extension === "xlsm") {
+    return "Excel";
+  }
+
+  return "file";
+}
+
+function toDownloadableSource(file: DownloadableFile): DownloadableSource {
+  return {
+    source: {
+      id: file.id,
+      title: file.title,
+      section: "File dokumen",
+      source: file.source,
+    },
+    title: file.title,
+    fileName: getSafeOriginalFileName(file.fileName || file.source || file.title),
+    fileType: file.fileType,
+    fileData: file.fileData,
+    fileUrl: file.fileUrl,
+    content: "",
+  };
+}
+
+function getDownloadableSources(sources: MessageSource[] = []): DownloadableSource[] {
   const documents = getKnowledgeDocuments();
   const seenSources = new Set<string>();
 
   return sources
-    .map((source) => {
+    .map<DownloadableSource | null>((source) => {
       if (seenSources.has(source.source)) {
         return null;
       }
@@ -54,36 +104,43 @@ function getDownloadableSources(sources: MessageSource[] = []) {
         return null;
       }
 
+      if (!document.fileData && !document.fileUrl) {
+        return null;
+      }
+
       return {
         source,
         title: document.title || source.title,
-        fileName: getSafeFileName(document.source || document.title),
+        fileName: getSafeOriginalFileName(
+          document.fileName || document.source || document.title
+        ),
+        fileType: document.fileType,
+        fileData: document.fileData,
+        fileUrl: document.fileUrl,
         content,
       };
     })
-    .filter(
-      (
-        item
-      ): item is {
-        source: MessageSource;
-        title: string;
-        fileName: string;
-        content: string;
-      } => Boolean(item)
-    );
+    .filter((item): item is DownloadableSource => Boolean(item));
 }
 
-function downloadTextFile(fileName: string, content: string) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+function downloadFile(item: {
+  fileName: string;
+  fileType?: string;
+  fileData?: string;
+  fileUrl?: string;
+  content: string;
+}) {
+  if (!item.fileData && !item.fileUrl) {
+    return;
+  }
+
   const link = document.createElement("a");
 
-  link.href = url;
-  link.download = fileName;
+  link.href = item.fileData || item.fileUrl || "";
+  link.download = item.fileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function renderLinkedText(text: string): ReactNode[] {
@@ -349,7 +406,9 @@ function ChatWindow({
         const isEditing = editingIndex === i;
         const downloadableSources =
           msg.role === "model" && msg.showDownloads
-            ? getDownloadableSources(msg.sources)
+            ? msg.downloads?.length
+              ? msg.downloads.map(toDownloadableSource)
+              : getDownloadableSources(msg.sources)
             : [];
 
         return (
@@ -398,12 +457,12 @@ function ChatWindow({
                     <button
                       className="message-download-btn"
                       key={`${item.source.source}-${item.fileName}`}
-                      onClick={() => downloadTextFile(item.fileName, item.content)}
+                      onClick={() => downloadFile(item)}
                       title={`Download ${item.title}`}
                       type="button"
                     >
                       <DownloadIcon />
-                      <span>Download file</span>
+                      <span>Download {getFileKind(item.fileName)}</span>
                       <small>{item.source.source}</small>
                     </button>
                   ))}

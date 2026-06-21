@@ -1,5 +1,6 @@
 import {
   knowledgeChunks,
+  knowledgeSourceFiles,
   type KnowledgeChunk,
 } from "../data/knowledgeBase";
 
@@ -16,6 +17,9 @@ export interface UploadedKnowledgeDocument {
   source: string;
   section: string;
   content: string;
+  fileName?: string;
+  fileType?: string;
+  fileData?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -30,6 +34,10 @@ export interface KnowledgeDocument {
   isActive: boolean;
   isUploaded: boolean;
   content?: string;
+  fileName?: string;
+  fileType?: string;
+  fileData?: string;
+  fileUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -39,6 +47,9 @@ export interface KnowledgeDocumentInput {
   source: string;
   content: string;
   section?: string;
+  fileName?: string;
+  fileType?: string;
+  fileData?: string;
   isActive?: boolean;
 }
 
@@ -154,6 +165,9 @@ function normalizeDocument(value: unknown): UploadedKnowledgeDocument | null {
     source,
     section: String(item.section || "Dokumen Upload Admin").trim(),
     content,
+    fileName: String(item.fileName || "").trim() || undefined,
+    fileType: String(item.fileType || "").trim() || undefined,
+    fileData: String(item.fileData || "").trim() || undefined,
     isActive: item.isActive !== false,
     createdAt: String(item.createdAt || now),
     updatedAt: String(item.updatedAt || item.createdAt || now),
@@ -222,6 +236,9 @@ export async function createUploadedKnowledgeDocument(
     source: input.source.trim(),
     section: input.section?.trim() || "Dokumen Upload Admin",
     content: input.content.trim(),
+    fileName: input.fileName?.trim(),
+    fileType: input.fileType?.trim(),
+    fileData: input.fileData?.trim(),
     isActive: input.isActive ?? true,
   };
 
@@ -267,6 +284,9 @@ export async function updateUploadedKnowledgeDocument(
       currentDocument?.section ||
       "Dokumen Upload Admin",
     content: input.content?.trim() || currentDocument?.content || "",
+    fileName: input.fileName?.trim() || currentDocument?.fileName,
+    fileType: input.fileType?.trim() || currentDocument?.fileType,
+    fileData: input.fileData?.trim() || currentDocument?.fileData,
     isActive: input.isActive ?? currentDocument?.isActive ?? true,
   };
 
@@ -539,6 +559,10 @@ function groupStaticChunks(): Map<string, KnowledgeChunk[]> {
   return groupedChunks;
 }
 
+function getStaticSourceFile(source: string) {
+  return knowledgeSourceFiles.find((file) => file.source === source);
+}
+
 function buildStaticDocumentContent(chunks: KnowledgeChunk[]): string {
   return chunks
     .map((chunk) => chunk.content.trim())
@@ -598,6 +622,7 @@ export function getKnowledgeDocuments(): KnowledgeDocument[] {
 
   for (const [source, chunks] of groupedStaticChunks) {
     const override = overrides.get(source);
+    const sourceFile = getStaticSourceFile(source);
     const content = override?.content || buildStaticDocumentContent(chunks);
     const displayChunks = override
       ? chunkDocumentContent({
@@ -620,6 +645,9 @@ export function getKnowledgeDocuments(): KnowledgeDocument[] {
       isActive: activeSources.has(source),
       isUploaded: false,
       content,
+      fileName: sourceFile?.fileName,
+      fileType: sourceFile?.fileType,
+      fileUrl: sourceFile?.fileUrl,
       updatedAt: override?.updatedAt,
     });
   }
@@ -635,6 +663,9 @@ export function getKnowledgeDocuments(): KnowledgeDocument[] {
       isActive: document.isActive,
       isUploaded: true,
       content: document.content,
+      fileName: document.fileName,
+      fileType: document.fileType,
+      fileData: document.fileData,
       createdAt: document.createdAt,
       updatedAt: document.updatedAt,
     });

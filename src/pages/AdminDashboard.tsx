@@ -22,6 +22,38 @@ function getDefaultTitle(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
 }
 
+function getFallbackFileType(fileName: string): string {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  const fileTypes: Record<string, string> = {
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    xlsm: "application/vnd.ms-excel.sheet.macroEnabled.12",
+    csv: "text/csv",
+    json: "application/json",
+    md: "text/markdown",
+    txt: "text/plain",
+  };
+
+  return extension ? fileTypes[extension] || "application/octet-stream" : "application/octet-stream";
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.addEventListener("load", () => {
+      resolve(String(reader.result || ""));
+    });
+    reader.addEventListener("error", () => {
+      reject(new Error("File gagal disiapkan untuk download."));
+    });
+    reader.readAsDataURL(file);
+  });
+}
+
 function AdminDashboard() {
   const navigate = useNavigate();
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
@@ -31,6 +63,9 @@ function AdminDashboard() {
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadSource, setUploadSource] = useState("");
   const [uploadContent, setUploadContent] = useState("");
+  const [uploadFileName, setUploadFileName] = useState("");
+  const [uploadFileType, setUploadFileType] = useState("");
+  const [uploadFileData, setUploadFileData] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -74,10 +109,20 @@ function AdminDashboard() {
       return;
     }
 
+    if (file.size > 20 * 1024 * 1024) {
+      setNotice("Ukuran file terlalu besar. Gunakan file maksimal sekitar 20 MB.");
+      event.target.value = "";
+      return;
+    }
+
     let text: string;
+    let fileData: string;
 
     try {
-      text = await extractDocumentText(file);
+      [text, fileData] = await Promise.all([
+        extractDocumentText(file),
+        readFileAsDataUrl(file),
+      ]);
     } catch (error) {
       setNotice(
         error instanceof Error
@@ -97,6 +142,9 @@ function AdminDashboard() {
     setUploadSource(file.name);
     setUploadTitle((currentTitle) => currentTitle || getDefaultTitle(file.name));
     setUploadContent(text);
+    setUploadFileName(file.name);
+    setUploadFileType(file.type || getFallbackFileType(file.name));
+    setUploadFileData(fileData);
     setNotice("");
   };
 
@@ -113,10 +161,16 @@ function AdminDashboard() {
       title: uploadTitle,
       source: uploadSource || `${uploadTitle.trim()}.txt`,
       content: uploadContent,
+      fileName: uploadFileName || uploadSource || `${uploadTitle.trim()}.txt`,
+      fileType: uploadFileType || getFallbackFileType(uploadSource || uploadTitle),
+      fileData: uploadFileData,
     });
     setUploadTitle("");
     setUploadSource("");
     setUploadContent("");
+    setUploadFileName("");
+    setUploadFileType("");
+    setUploadFileData("");
     setNotice("Dokumen berhasil diupload dan aktif digunakan chatbot.");
     setIsSaving(false);
     await refreshDocuments();

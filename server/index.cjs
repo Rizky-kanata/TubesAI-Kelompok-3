@@ -50,9 +50,9 @@ function readBody(request) {
     request.on("data", (chunk) => {
       body += chunk;
 
-      if (body.length > 2_000_000) {
+      if (body.length > 30_000_000) {
         request.destroy();
-        reject(new Error("Payload terlalu besar."));
+        reject(new Error("Payload terlalu besar. Gunakan file maksimal sekitar 20 MB."));
       }
     });
 
@@ -81,6 +81,11 @@ function toDocument(payload, existingDocument) {
   const title = String(payload.title || existingDocument?.title || "").trim();
   const source = String(payload.source || existingDocument?.source || "").trim();
   const content = String(payload.content || existingDocument?.content || "").trim();
+  const fileData = String(payload.fileData || existingDocument?.fileData || "").trim();
+  const fileName = String(
+    payload.fileName || existingDocument?.fileName || source
+  ).trim();
+  const fileType = String(payload.fileType || existingDocument?.fileType || "").trim();
 
   if (!title || !source || !content) {
     return null;
@@ -96,6 +101,9 @@ function toDocument(payload, existingDocument) {
       payload.section || existingDocument?.section || "Dokumen Upload Admin"
     ).trim(),
     content,
+    fileName,
+    fileType,
+    fileData,
     isActive:
       typeof payload.isActive === "boolean"
         ? payload.isActive

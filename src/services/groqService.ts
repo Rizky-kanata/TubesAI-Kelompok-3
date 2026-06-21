@@ -1,5 +1,6 @@
 import chatbotConfig from "../config/chatbotConfig";
-import type { BotReply, Message } from "../types/Message";
+import type { BotReply, DownloadableFile, Message } from "../types/Message";
+import { getKnowledgeDocuments } from "./knowledgeAdminService";
 import {
   buildDocumentFileRequestAnswer,
   buildLocalFallbackAnswer,
@@ -9,6 +10,7 @@ import {
   retrieveRelevantChunks,
   toMessageSources,
 } from "./ragService";
+import type { RetrievedChunk } from "./ragService";
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const API_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -146,6 +148,39 @@ function sanitizePlainText(reply: string): string {
   return formatLinkList(cleaned);
 }
 
+function buildDownloadableFiles(chunks: RetrievedChunk[]): DownloadableFile[] {
+  const documents = getKnowledgeDocuments();
+  const seenSources = new Set<string>();
+
+  return chunks
+    .map<DownloadableFile | null>((chunk) => {
+      if (seenSources.has(chunk.source)) {
+        return null;
+      }
+
+      seenSources.add(chunk.source);
+
+      const document = documents.find(
+        (item) => item.source === chunk.source || item.id === chunk.source
+      );
+
+      if (!document?.fileData && !document?.fileUrl) {
+        return null;
+      }
+
+      return {
+        id: document.id,
+        title: document.title || chunk.title,
+        source: document.source || chunk.source,
+        fileName: document.fileName || document.source || chunk.source,
+        fileType: document.fileType,
+        fileData: document.fileData,
+        fileUrl: document.fileUrl,
+      };
+    })
+    .filter((file): file is DownloadableFile => Boolean(file));
+}
+
 export async function sendMessage(
   prompt: string,
   history: Message[]
@@ -179,10 +214,15 @@ export async function sendMessage(
   }
 
   if (fileRequestAnswer) {
+    const downloads = buildDownloadableFiles(responseChunks);
+
     return {
-      content: fileRequestAnswer,
+      content: downloads.length
+        ? fileRequestAnswer
+        : "Saya menemukan informasi yang cocok, tetapi file asli belum tersedia untuk diunduh. Upload ulang file melalui dashboard admin atau pastikan file ada di folder documents.",
       sources,
-      showDownloads: true,
+      showDownloads: downloads.length > 0,
+      downloads,
     };
   }
 

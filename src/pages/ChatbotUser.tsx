@@ -63,6 +63,7 @@ function ChatbotUser() {
         content: reply.content,
         sources: reply.sources,
         showDownloads: reply.showDownloads,
+        downloads: reply.downloads,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch {
@@ -98,6 +99,7 @@ function ChatbotUser() {
         content: reply.content,
         sources: reply.sources,
         showDownloads: reply.showDownloads,
+        downloads: reply.downloads,
       };
       setMessages([...nextMessages, botMessage]);
     } catch {

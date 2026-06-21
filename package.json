@@ -4,11 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "npm run knowledge:extract",
+    "prebuild": "npm run knowledge:extract",
     "api": "node server/index.cjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "health:check": "node scripts/healthcheck.cjs",
-    "knowledge:extract": "powershell -ExecutionPolicy Bypass -File scripts/extract-knowledge.ps1",
+    "knowledge:extract": "node scripts/extract-knowledge.cjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
