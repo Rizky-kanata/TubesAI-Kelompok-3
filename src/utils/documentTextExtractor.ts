@@ -1,5 +1,5 @@
 export const SUPPORTED_DOCUMENT_ACCEPT =
-  ".txt,.md,.csv,.json,.docx,.pdf,.xlsx,.xlsm,.xls";
+  ".txt,.md,.csv,.json,.doc,.docx,.pdf,.xlsx,.xlsm,.xls";
 
 type ZipEntryMap = Map<string, Uint8Array>;
 
@@ -22,6 +22,11 @@ function readUint32(data: Uint8Array, offset: number): number {
 
 function decodeText(data: Uint8Array, encoding = "utf-8"): string {
   return new TextDecoder(encoding).decode(data);
+}
+
+function isOleCompoundDocument(data: Uint8Array): boolean {
+  const oleMagic = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+  return oleMagic.every((byte, index) => data[index] === byte);
 }
 
 function toArrayBuffer(data: Uint8Array): ArrayBuffer {
@@ -55,6 +60,87 @@ async function inflatePdfStream(data: Uint8Array): Promise<Uint8Array> {
   } catch {
     return inflate(data, "deflate-raw");
   }
+}
+
+function decodeAscii85(data: Uint8Array): Uint8Array {
+  const bytes: number[] = [];
+  const group: number[] = [];
+
+  for (let index = 0; index < data.length; index += 1) {
+    const byte = data[index];
+    const character = String.fromCharCode(byte);
+
+    if (/\s/.test(character)) {
+      continue;
+    }
+
+    if (
+      character === "<" &&
+      String.fromCharCode(data[index + 1] || 0) === "~" &&
+      group.length === 0
+    ) {
+      index += 1;
+      continue;
+    }
+
+    if (character === "~") {
+      break;
+    }
+
+    if (character === "z" && group.length === 0) {
+      bytes.push(0, 0, 0, 0);
+      continue;
+    }
+
+    const value = byte - 33;
+
+    if (value < 0 || value > 84) {
+      continue;
+    }
+
+    group.push(value);
+
+    if (group.length === 5) {
+      let accumulator = 0;
+
+      for (const item of group) {
+        accumulator = accumulator * 85 + item;
+      }
+
+      bytes.push(
+        (accumulator >>> 24) & 0xff,
+        (accumulator >>> 16) & 0xff,
+        (accumulator >>> 8) & 0xff,
+        accumulator & 0xff
+      );
+      group.length = 0;
+    }
+  }
+
+  if (group.length > 0) {
+    const outputLength = group.length - 1;
+
+    while (group.length < 5) {
+      group.push(84);
+    }
+
+    let accumulator = 0;
+
+    for (const item of group) {
+      accumulator = accumulator * 85 + item;
+    }
+
+    bytes.push(
+      ...[
+        (accumulator >>> 24) & 0xff,
+        (accumulator >>> 16) & 0xff,
+        (accumulator >>> 8) & 0xff,
+        accumulator & 0xff,
+      ].slice(0, outputLength)
+    );
+  }
+
+  return new Uint8Array(bytes);
 }
 
 async function readZipEntries(data: Uint8Array): Promise<ZipEntryMap> {
@@ -149,21 +235,76 @@ function getDirectTextByLocalName(parent: ParentNode, localName: string): string
     .join("");
 }
 
+function readRelationshipTargets(
+  entries: ZipEntryMap,
+  relationshipPath: string,
+  typePattern?: RegExp
+): string[] {
+  const relationshipEntry = entries.get(relationshipPath);
+
+  if (!relationshipEntry) {
+    return [];
+  }
+
+  const xmlDocument = parseXml(
+    decodeText(relationshipEntry),
+    "Format relasi dokumen tidak valid."
+  );
+
+  return getElementsByLocalName(xmlDocument, "Relationship")
+    .filter((relationship) => {
+      const type = relationship.getAttribute("Type") || "";
+      const targetMode = relationship.getAttribute("TargetMode") || "";
+      const target = relationship.getAttribute("Target") || "";
+
+      return (
+        /^https?:\/\//i.test(target) &&
+        (!typePattern || typePattern.test(type)) &&
+        (!targetMode || targetMode.toLowerCase() === "external")
+      );
+    })
+    .map((relationship) => relationship.getAttribute("Target") || "")
+    .filter(Boolean);
+}
+
 async function extractDocxText(file: File): Promise<string> {
   const entries = await readZipEntries(new Uint8Array(await file.arrayBuffer()));
-  const documentXml = decodeText(getZipEntry(entries, "word/document.xml"));
-  const xmlDocument = parseXml(documentXml, "Format DOCX tidak valid.");
-  const paragraphs = getElementsByLocalName(xmlDocument, "p");
-  const lines = paragraphs
-    .map((paragraph) =>
-      getElementsByLocalName(paragraph, "t")
-        .map((node) => node.textContent || "")
-        .join("")
-        .trim()
-    )
-    .filter(Boolean);
+  const documentEntryNames = [
+    "word/document.xml",
+    ...Array.from(entries.keys()).filter((entryName) =>
+      /^word\/(?:header|footer|footnotes|endnotes)\d*\.xml$/i.test(entryName)
+    ),
+  ];
+  const lines = documentEntryNames.flatMap((entryName) => {
+    const entry = entries.get(entryName);
 
-  return lines.join("\n");
+    if (!entry) {
+      return [];
+    }
+
+    const xmlDocument = parseXml(
+      decodeText(entry),
+      entryName === "word/document.xml"
+        ? "Format DOCX tidak valid."
+        : "Format bagian DOCX tidak valid."
+    );
+
+    return getElementsByLocalName(xmlDocument, "p")
+      .map((paragraph) =>
+        getElementsByLocalName(paragraph, "t")
+          .map((node) => node.textContent || "")
+          .join("")
+          .trim()
+      )
+      .filter(Boolean);
+  });
+  const hyperlinkTargets = readRelationshipTargets(
+    entries,
+    "word/_rels/document.xml.rels",
+    /\/hyperlink$/i
+  );
+
+  return normalizeExtractedText([...lines, ...hyperlinkTargets].join("\n"));
 }
 
 function readSharedStrings(entries: ZipEntryMap): string[] {
@@ -273,6 +414,14 @@ function readExcelCellValue(cell: Element, sharedStrings: string[]): string {
   return rawValue;
 }
 
+function getWorksheetRelationshipPath(sheetPath: string): string {
+  const slashIndex = sheetPath.lastIndexOf("/");
+  const directory = slashIndex === -1 ? "" : sheetPath.slice(0, slashIndex + 1);
+  const fileName = slashIndex === -1 ? sheetPath : sheetPath.slice(slashIndex + 1);
+
+  return `${directory}_rels/${fileName}.rels`;
+}
+
 async function extractXlsxText(file: File): Promise<string> {
   const entries = await readZipEntries(new Uint8Array(await file.arrayBuffer()));
   const sharedStrings = readSharedStrings(entries);
@@ -291,16 +440,21 @@ async function extractXlsxText(file: File): Promise<string> {
             .join("\t")
         )
         .filter(Boolean);
+      const hyperlinkTargets = readRelationshipTargets(
+        entries,
+        getWorksheetRelationshipPath(sheet.path),
+        /\/hyperlink$/i
+      );
 
-      if (!rows.length) {
+      if (!rows.length && !hyperlinkTargets.length) {
         return "";
       }
 
-      return [`Sheet: ${sheet.name}`, ...rows].join("\n");
+      return [`Sheet: ${sheet.name}`, ...rows, ...hyperlinkTargets].join("\n");
     })
     .filter(Boolean);
 
-  return sheetTexts.join("\n\n");
+  return normalizeExtractedText(sheetTexts.join("\n\n"));
 }
 
 function decodeUtf16Be(bytes: Uint8Array): string {
@@ -654,14 +808,17 @@ async function readPdfStreams(data: Uint8Array, pdfText: string): Promise<string
       const streamEnd = getPdfStreamEnd(pdfText, dictionaryText, streamStart);
       const streamData = data.slice(streamStart, streamEnd);
 
-      if (/\/FlateDecode\b/.test(dictionaryText)) {
-        try {
-          streams.push(decodeText(await inflatePdfStream(streamData), "windows-1252"));
-        } catch {
-          // Ignore streams that are not text or use unsupported filters.
+      try {
+        const decodedStreamData = await decodePdfStreamData(
+          streamData,
+          dictionaryText
+        );
+
+        if (decodedStreamData) {
+          streams.push(decodeText(decodedStreamData, "windows-1252"));
         }
-      } else if (!/\/(DCTDecode|JPXDecode|CCITTFaxDecode|JBIG2Decode|Crypt)\b/.test(dictionaryText)) {
-        streams.push(decodeText(streamData, "windows-1252"));
+      } catch {
+        // Ignore streams that are not text or use unsupported filters.
       }
     }
 
@@ -669,6 +826,81 @@ async function readPdfStreams(data: Uint8Array, pdfText: string): Promise<string
   }
 
   return streams;
+}
+
+function getPdfStreamFilters(dictionaryText: string): string[] {
+  const filterArray = dictionaryText.match(/\/Filter\s*\[([^\]]+)\]/)?.[1];
+
+  if (filterArray) {
+    return [...filterArray.matchAll(/\/([A-Za-z0-9]+)/g)].map(
+      (match) => match[1]
+    );
+  }
+
+  const singleFilter = dictionaryText.match(/\/Filter\s*\/([A-Za-z0-9]+)/)?.[1];
+  return singleFilter ? [singleFilter] : [];
+}
+
+async function decodePdfStreamData(
+  streamData: Uint8Array,
+  dictionaryText: string
+): Promise<Uint8Array | null> {
+  const filters = getPdfStreamFilters(dictionaryText);
+
+  if (filters.some((filter) => /^(DCTDecode|JPXDecode|CCITTFaxDecode|JBIG2Decode|Crypt)$/i.test(filter))) {
+    return null;
+  }
+
+  let decodedData = streamData;
+
+  for (const filter of filters) {
+    if (/^(ASCII85Decode|A85)$/i.test(filter)) {
+      decodedData = decodeAscii85(decodedData);
+      continue;
+    }
+
+    if (/^FlateDecode$/i.test(filter)) {
+      decodedData = await inflatePdfStream(decodedData);
+      continue;
+    }
+
+    if (/^ASCIIHexDecode$/i.test(filter)) {
+      decodedData = decodePdfAsciiHex(decodedData);
+      continue;
+    }
+
+    return null;
+  }
+
+  return decodedData;
+}
+
+function decodePdfAsciiHex(data: Uint8Array): Uint8Array {
+  let hex = "";
+
+  for (const byte of data) {
+    const character = String.fromCharCode(byte);
+
+    if (character === ">") {
+      break;
+    }
+
+    if (/[\da-f]/i.test(character)) {
+      hex += character;
+    }
+  }
+
+  if (hex.length % 2 === 1) {
+    hex += "0";
+  }
+
+  const bytes = new Uint8Array(hex.length / 2);
+
+  for (let index = 0; index < hex.length; index += 2) {
+    bytes[index / 2] = parseInt(hex.slice(index, index + 2), 16);
+  }
+
+  return bytes;
 }
 
 function findNextPdfStreamIndex(text: string, startIndex: number): number {
@@ -690,11 +922,69 @@ function findNextPdfStreamIndex(text: string, startIndex: number): number {
 
 function normalizeExtractedText(text: string): string {
   return text
+    .replace(/\0/g, " ")
     .split(/\n+/)
     .map((line) => line.replace(/[ \t]+/g, " ").trim())
     .filter(Boolean)
     .filter((line, index, lines) => lines.indexOf(line) === index)
     .join("\n");
+}
+
+function extractTextFromMarkup(text: string): string {
+  const trimmedText = text.trim();
+  const isMarkup =
+    /^<\?xml/i.test(trimmedText) ||
+    /^<html/i.test(trimmedText) ||
+    /<body[\s>]/i.test(trimmedText);
+
+  if (!isMarkup) {
+    return normalizeExtractedText(text);
+  }
+
+  const parsedDocument = new DOMParser().parseFromString(
+    trimmedText,
+    /^<html/i.test(trimmedText) || /<body[\s>]/i.test(trimmedText)
+      ? "text/html"
+      : "application/xml"
+  );
+  const bodyText = parsedDocument.body?.textContent || parsedDocument.textContent || "";
+  const links = Array.from(parsedDocument.querySelectorAll("a[href]"))
+    .map((link) => link.getAttribute("href") || "")
+    .filter((href) => /^https?:\/\//i.test(href));
+
+  return normalizeExtractedText([bodyText, ...links].join("\n"));
+}
+
+function extractTextFromRtf(text: string): string {
+  const cleanedText = text
+    .replace(/\\par[d]?/gi, "\n")
+    .replace(/\\line/gi, "\n")
+    .replace(/\\tab/gi, " ")
+    .replace(/\\'[0-9a-f]{2}/gi, " ")
+    .replace(/[{}]/g, " ")
+    .replace(/\\[a-z]+\d* ?/gi, " ")
+    .replace(/\\./g, " ");
+
+  return normalizeExtractedText(cleanedText);
+}
+
+async function extractLegacyOfficeText(
+  file: File,
+  binaryErrorMessage: string
+): Promise<string> {
+  const data = new Uint8Array(await file.arrayBuffer());
+
+  if (isOleCompoundDocument(data)) {
+    throw new Error(binaryErrorMessage);
+  }
+
+  const text = decodeText(data, "windows-1252");
+
+  if (/^\s*{\\rtf/i.test(text)) {
+    return extractTextFromRtf(text);
+  }
+
+  return extractTextFromMarkup(text);
 }
 
 async function extractPdfText(file: File): Promise<string> {
@@ -727,6 +1017,13 @@ export async function extractDocumentText(file: File): Promise<string> {
     return extractDocxText(file);
   }
 
+  if (fileExtension === "doc") {
+    return extractLegacyOfficeText(
+      file,
+      "Format Word lama .doc biner belum didukung. Simpan ulang dokumen sebagai .docx, lalu upload kembali."
+    );
+  }
+
   if (fileExtension === "pdf") {
     return extractPdfText(file);
   }
@@ -736,8 +1033,9 @@ export async function extractDocumentText(file: File): Promise<string> {
   }
 
   if (fileExtension === "xls") {
-    throw new Error(
-      "Format Excel lama .xls belum didukung. Simpan ulang sebagai .xlsx atau .csv, lalu upload kembali."
+    return extractLegacyOfficeText(
+      file,
+      "Format Excel lama .xls biner belum didukung. Simpan ulang spreadsheet sebagai .xlsx atau .csv, lalu upload kembali."
     );
   }
 
@@ -746,6 +1044,6 @@ export async function extractDocumentText(file: File): Promise<string> {
   }
 
   throw new Error(
-    "Format dokumen belum didukung. Gunakan TXT, MD, CSV, JSON, DOCX, PDF, atau XLSX."
+    "Format dokumen belum didukung. Gunakan TXT, MD, CSV, JSON, DOCX, PDF, XLSX, atau XLSM."
   );
 }

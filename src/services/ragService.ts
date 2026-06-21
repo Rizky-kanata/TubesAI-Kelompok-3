@@ -86,6 +86,7 @@ const queryExpansions = [
 
 const tokenAliases: Record<string, string[]> = {
   lpj: ["lpg", "lpjj", "lpjnya"],
+  lampiran: ["lompiran", "lampirn", "lampran", "lampirann", "lampirannya"],
   laporan: ["lpaoran", "laproan", "lapran", "lapoan", "lapora", "laporann"],
   pengajuan: ["pengajuaan", "pengajun", "pngajuan", "pengajuann"],
   pertanggungjawaban: [
@@ -102,6 +103,8 @@ const tokenAliases: Record<string, string[]> = {
   alur: ["allur", "alurrr", "alurr"],
   dokumen: ["dokmen", "document", "dokumenn"],
   template: ["templete", "templte"],
+  unggah: ["ungah", "unggahh", "unggha"],
+  upload: ["uplod", "uplot", "aplod"],
   whatsapp: ["whatsap", "watshapp", "wahtsapp"],
   kontak: ["contact", "kontrak", "kontakknya"],
 };

@@ -117,7 +117,7 @@ function AdminDashboard() {
     setUploadTitle("");
     setUploadSource("");
     setUploadContent("");
-    setNotice("Dokumen berhasil diupload.");
+    setNotice("Dokumen berhasil diupload dan aktif digunakan chatbot.");
     setIsSaving(false);
     await refreshDocuments();
   };
@@ -244,7 +244,7 @@ function AdminDashboard() {
             <h2>Upload Dokumen Baru</h2>
             <input
               accept={SUPPORTED_DOCUMENT_ACCEPT}
-              aria-label="Pilih file dokumen teks"
+              aria-label="Pilih file dokumen"
               onChange={handleFileChange}
               type="file"
             />
