@@ -3,6 +3,7 @@ import {
   getActiveKnowledgeSources,
   getAllKnowledgeChunks,
   getAllKnowledgeChunksSync,
+  getKnowledgeDocuments,
 } from "./knowledgeAdminService";
 import type { MessageSource } from "../types/Message";
 
@@ -851,9 +852,36 @@ function getRequestedFileExtensions(query: string): string[] {
   return extensions;
 }
 
+function getFileExtension(value = ""): string {
+  return value.match(/\.([a-z0-9]{1,10})(?:$|[?#])/i)?.[1]?.toLowerCase() || "";
+}
+
+function getExtensionFromFileType(fileType = ""): string {
+  const extensionByType: Record<string, string> = {
+    "application/pdf": "pdf",
+    "application/msword": "doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.ms-excel.sheet.macroenabled.12": "xlsm",
+    "text/csv": "csv",
+  };
+
+  return extensionByType[fileType.toLowerCase()] || "";
+}
+
 function sourceMatchesExtensions(source: string, extensions: string[]): boolean {
-  const extension = source.split(".").pop()?.toLowerCase() || "";
-  return extensions.includes(extension);
+  const document = getKnowledgeDocuments().find(
+    (item) => item.source === source || item.id === source
+  );
+  const candidateExtensions = [
+    getFileExtension(source),
+    getFileExtension(document?.source),
+    getFileExtension(document?.fileName),
+    getExtensionFromFileType(document?.fileType),
+  ].filter(Boolean);
+
+  return candidateExtensions.some((extension) => extensions.includes(extension));
 }
 
 export function getDocumentFileRequestChunks(

@@ -53,6 +53,8 @@ export interface KnowledgeDocumentInput {
   isActive?: boolean;
 }
 
+let uploadedDocumentsMemoryCache: UploadedKnowledgeDocument[] = [];
+
 interface StaticKnowledgeOverride {
   source: string;
   title: string;
@@ -175,14 +177,44 @@ function normalizeDocument(value: unknown): UploadedKnowledgeDocument | null {
 }
 
 function readUploadedDocumentsCache(): UploadedKnowledgeDocument[] {
+  if (uploadedDocumentsMemoryCache.length > 0) {
+    return uploadedDocumentsMemoryCache;
+  }
+
   const documents = readJsonFromStorage<unknown[]>(UPLOADED_DOCUMENTS_KEY, []);
-  return documents
+  const normalizedDocuments = documents
     .map(normalizeDocument)
     .filter((document): document is UploadedKnowledgeDocument => Boolean(document));
+
+  uploadedDocumentsMemoryCache = normalizedDocuments;
+  return normalizedDocuments;
 }
 
 function writeUploadedDocumentsCache(documents: UploadedKnowledgeDocument[]) {
-  writeJsonToStorage(UPLOADED_DOCUMENTS_KEY, documents);
+  uploadedDocumentsMemoryCache = documents;
+
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    localStorage.setItem(UPLOADED_DOCUMENTS_KEY, JSON.stringify(documents));
+    return;
+  } catch {
+    const documentsWithoutFileData = documents.map((document) => ({
+      ...document,
+      fileData: undefined,
+    }));
+
+    try {
+      localStorage.setItem(
+        UPLOADED_DOCUMENTS_KEY,
+        JSON.stringify(documentsWithoutFileData)
+      );
+    } catch {
+      localStorage.removeItem(UPLOADED_DOCUMENTS_KEY);
+    }
+  }
 }
 
 async function requestApi<T>(

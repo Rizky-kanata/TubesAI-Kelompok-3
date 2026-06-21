@@ -43,13 +43,31 @@ function getSafeBaseName(value: string): string {
   );
 }
 
-function getSafeOriginalFileName(value: string): string {
-  const extension = value.match(/\.([a-z0-9]{1,10})$/i)?.[1]?.toLowerCase();
+function getExtensionFromFileType(fileType = ""): string {
+  const extensionByType: Record<string, string> = {
+    "application/pdf": "pdf",
+    "application/msword": "doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.ms-excel.sheet.macroenabled.12": "xlsm",
+    "text/csv": "csv",
+  };
+
+  return extensionByType[fileType.toLowerCase()] || "";
+}
+
+function getSafeOriginalFileName(value: string, fileType?: string): string {
+  const extension =
+    value.match(/\.([a-z0-9]{1,10})$/i)?.[1]?.toLowerCase() ||
+    getExtensionFromFileType(fileType);
+
   return `${getSafeBaseName(value)}.${extension || "bin"}`;
 }
 
-function getFileKind(fileName: string): string {
-  const extension = fileName.split(".").pop()?.toLowerCase();
+function getFileKind(fileName: string, fileType?: string): string {
+  const extension =
+    fileName.split(".").pop()?.toLowerCase() || getExtensionFromFileType(fileType);
 
   if (extension === "pdf") {
     return "PDF";
@@ -75,7 +93,10 @@ function toDownloadableSource(file: DownloadableFile): DownloadableSource {
       source: file.source,
     },
     title: file.title,
-    fileName: getSafeOriginalFileName(file.fileName || file.source || file.title),
+    fileName: getSafeOriginalFileName(
+      file.fileName || file.source || file.title,
+      file.fileType
+    ),
     fileType: file.fileType,
     fileData: file.fileData,
     fileUrl: file.fileUrl,
@@ -112,7 +133,8 @@ function getDownloadableSources(sources: MessageSource[] = []): DownloadableSour
         source,
         title: document.title || source.title,
         fileName: getSafeOriginalFileName(
-          document.fileName || document.source || document.title
+          document.fileName || document.source || document.title,
+          document.fileType
         ),
         fileType: document.fileType,
         fileData: document.fileData,
@@ -462,7 +484,7 @@ function ChatWindow({
                       type="button"
                     >
                       <DownloadIcon />
-                      <span>Download {getFileKind(item.fileName)}</span>
+                      <span>Download {getFileKind(item.fileName, item.fileType)}</span>
                       <small>{item.source.source}</small>
                     </button>
                   ))}
