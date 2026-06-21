@@ -8,6 +8,13 @@ import { logout } from "../services/authService";
 import type { Message } from "../types/Message";
 import "../App.css";
 
+const faqPromptMessages: Record<string, string> = {
+  "FAQ Proposal": "Ringkas FAQ pengajuan proposal kegiatan: alur, syarat, template, dan link jika tersedia.",
+  "FAQ LPJ": "Ringkas FAQ LPJ kegiatan: alur, syarat, template, dan link jika tersedia.",
+  "FAQ Sertifikat": "Ringkas FAQ sertifikasi kegiatan: alur pengajuan dan dokumen yang dibutuhkan.",
+  "FAQ Kontak SSC": "Bagaimana cara menghubungi SSC berdasarkan dokumen yang tersedia?",
+};
+
 function ChatbotUser() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +30,7 @@ function ChatbotUser() {
         role: "model",
         content: reply.content,
         sources: reply.sources,
+        showDownloads: reply.showDownloads,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch {
@@ -57,6 +65,7 @@ function ChatbotUser() {
         role: "model",
         content: reply.content,
         sources: reply.sources,
+        showDownloads: reply.showDownloads,
       };
       setMessages([...nextMessages, botMessage]);
     } catch {
@@ -109,7 +118,7 @@ function ChatbotUser() {
               key={prompt}
               type="button"
               className="prompt-chip"
-              onClick={() => handleSend(prompt)}
+              onClick={() => handleSend(faqPromptMessages[prompt] || prompt)}
               disabled={isLoading}
             >
               {prompt}

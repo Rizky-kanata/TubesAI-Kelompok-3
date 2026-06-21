@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Message } from "../types/Message";
+import type { Message, MessageSource } from "../types/Message";
 import chatbotConfig from "../config/chatbotConfig";
+import { getKnowledgeDocuments } from "../services/knowledgeAdminService";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -18,6 +19,71 @@ function getUrlHost(value: string): string {
   } catch {
     return value;
   }
+}
+
+function getSafeFileName(value: string): string {
+  const fileName = value
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-z0-9-_\s]/gi, " ")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+
+  return `${fileName || "dokumen"}.txt`;
+}
+
+function getDownloadableSources(sources: MessageSource[] = []) {
+  const documents = getKnowledgeDocuments();
+  const seenSources = new Set<string>();
+
+  return sources
+    .map((source) => {
+      if (seenSources.has(source.source)) {
+        return null;
+      }
+
+      seenSources.add(source.source);
+
+      const document = documents.find(
+        (item) => item.source === source.source || item.id === source.source
+      );
+      const content = document?.content?.trim();
+
+      if (!document || !content) {
+        return null;
+      }
+
+      return {
+        source,
+        title: document.title || source.title,
+        fileName: getSafeFileName(document.source || document.title),
+        content,
+      };
+    })
+    .filter(
+      (
+        item
+      ): item is {
+        source: MessageSource;
+        title: string;
+        fileName: string;
+        content: string;
+      } => Boolean(item)
+    );
+}
+
+function downloadTextFile(fileName: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function renderLinkedText(text: string): ReactNode[] {
@@ -89,6 +155,40 @@ function renderMessageContent(content: string) {
         );
       })}
     </div>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="18"
+      viewBox="0 0 24 24"
+      width="18"
+    >
+      <path
+        d="M12 3v10"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="m7 9 5 5 5-5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M5 20h14"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
   );
 }
 
@@ -247,6 +347,10 @@ function ChatWindow({
       )}
       {messages.map((msg, i) => {
         const isEditing = editingIndex === i;
+        const downloadableSources =
+          msg.role === "model" && msg.showDownloads
+            ? getDownloadableSources(msg.sources)
+            : [];
 
         return (
           <div key={i} className={`message-group ${msg.role}`}>
@@ -286,6 +390,24 @@ function ChatWindow({
                 </form>
               ) : (
                 renderMessageContent(msg.content)
+              )}
+
+              {!isEditing && downloadableSources.length > 0 && (
+                <div className="message-downloads" aria-label="File sumber">
+                  {downloadableSources.map((item) => (
+                    <button
+                      className="message-download-btn"
+                      key={`${item.source.source}-${item.fileName}`}
+                      onClick={() => downloadTextFile(item.fileName, item.content)}
+                      title={`Download ${item.title}`}
+                      type="button"
+                    >
+                      <DownloadIcon />
+                      <span>Download file</span>
+                      <small>{item.source.source}</small>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 

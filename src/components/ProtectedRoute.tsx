@@ -1,16 +1,18 @@
 import { Navigate } from "react-router-dom";
-import { getCurrentUser } from "../services/authService";
+import { getCurrentUser, type AuthRole } from "../services/authService";
 
 interface Props {
   children: React.ReactNode;
-  allowedRole?: "admin" | "user";
+  allowedRole?: AuthRole;
+  allowedRoles?: AuthRole[];
 }
 
-const ProtectedRoute = ({ children, allowedRole }: Props) => {
+const ProtectedRoute = ({ children, allowedRole, allowedRoles }: Props) => {
   const user = getCurrentUser();
+  const roles = allowedRoles || (allowedRole ? [allowedRole] : null);
 
   if (!user) return <Navigate to="/login" replace />;
-  if (allowedRole && user.role !== allowedRole)
+  if (roles && !roles.includes(user.role))
     return <Navigate to="/login" replace />;
 
   return <>{children}</>;

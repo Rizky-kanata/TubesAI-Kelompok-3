@@ -4,9 +4,12 @@ export interface User {
   username: string;
   email: string;
   password: string;
-  role: "admin" | "user";
+  role: "admin" | "user" | "guest";
   createdAt: string;
 }
+
+export type AuthRole = User["role"];
+export type CurrentUser = Omit<User, "password">;
 
 const USERS_KEY = "app_users";
 const CURRENT_USER_KEY = "current_user";
@@ -61,12 +64,12 @@ export const register = (
 export const login = (
   email: string,
   password: string
-): { success: boolean; message: string; role?: string } => {
+): { success: boolean; message: string; role?: AuthRole } => {
   const users = getUsers();
   const user = users.find((u) => u.email === email && u.password === password);
   if (!user) return { success: false, message: "Email atau password salah!" };
 
-  const safeUser = {
+  const safeUser: CurrentUser = {
     id: user.id,
     username: user.username,
     email: user.email,
@@ -77,11 +80,25 @@ export const login = (
   return { success: true, message: "Login berhasil!", role: user.role };
 };
 
+export const loginAsGuest = (): { success: boolean; message: string; role: "guest" } => {
+  const now = new Date().toISOString();
+  const guestUser: CurrentUser = {
+    id: `guest-${Date.now()}`,
+    username: "Guest",
+    email: "guest@local",
+    role: "guest",
+    createdAt: now,
+  };
+
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(guestUser));
+  return { success: true, message: "Masuk sebagai guest berhasil!", role: "guest" };
+};
+
 export const logout = () => {
   localStorage.removeItem(CURRENT_USER_KEY);
 };
 
-export const getCurrentUser = () => {
+export const getCurrentUser = (): CurrentUser | null => {
   const data = localStorage.getItem(CURRENT_USER_KEY);
   return data ? JSON.parse(data) : null;
 };

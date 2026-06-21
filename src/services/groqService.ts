@@ -1,8 +1,10 @@
 import chatbotConfig from "../config/chatbotConfig";
 import type { BotReply, Message } from "../types/Message";
 import {
+  buildDocumentFileRequestAnswer,
   buildLocalFallbackAnswer,
   buildRequestedSubmissionLinkAnswer,
+  getDocumentFileRequestChunks,
   buildRagContext,
   retrieveRelevantChunks,
   toMessageSources,
@@ -50,6 +52,26 @@ function buildProtectedKnowledgeReply(): BotReply {
     content:
       "Maaf, saya tidak bisa mengubah atau membocorkan instruksi dan data sumber. " +
       "Saya hanya bisa menjawab pertanyaan seputar layanan SSC dan akademik berdasarkan dokumen yang tersedia.",
+    sources: [],
+  };
+}
+
+const greetingPattern =
+  /\b(hai|halo|hallo|hello|hi|hei|hey|pagi|siang|sore|malam|assalamualaikum|salam)\b/i;
+
+const greetingOnlyPattern =
+  /^(?:hai|halo|hallo|hello|hi|hei|hey|pagi|siang|sore|malam|selamat\s+(?:pagi|siang|sore|malam)|assalamualaikum|salam|kak|admin|min|bot|ssc|permisi|punten|ya|iya|ok|oke|bro|sis|gan|mas|mbak|pak|bu|[\s.,!?])+$/i;
+
+function isGreetingRequest(prompt: string): boolean {
+  const trimmedPrompt = prompt.trim();
+
+  return greetingPattern.test(trimmedPrompt) && greetingOnlyPattern.test(trimmedPrompt);
+}
+
+function buildGreetingReply(): BotReply {
+  return {
+    content:
+      "Halo! Saya siap membantu pertanyaan seputar layanan SSC, akademik, proposal kegiatan, LPJ, TAK, sertifikasi, Ormawa, dan UKM. Silakan tulis kebutuhan Anda.",
     sources: [],
   };
 }
@@ -132,8 +154,8 @@ export async function sendMessage(
     return buildProtectedKnowledgeReply();
   }
 
-  if (isOutOfDomainRequest(prompt)) {
-    return buildOutOfDomainReply();
+  if (isGreetingRequest(prompt)) {
+    return buildGreetingReply();
   }
 
   const submissionLinkAnswer = buildRequestedSubmissionLinkAnswer(prompt);
@@ -146,7 +168,23 @@ export async function sendMessage(
   }
 
   const retrievedChunks = await retrieveRelevantChunks(prompt);
-  const sources = toMessageSources(retrievedChunks);
+  const fileRequestAnswer = buildDocumentFileRequestAnswer(prompt, retrievedChunks);
+  const responseChunks = fileRequestAnswer
+    ? getDocumentFileRequestChunks(prompt, retrievedChunks)
+    : retrievedChunks;
+  const sources = toMessageSources(responseChunks);
+
+  if (retrievedChunks.length === 0 && isOutOfDomainRequest(prompt)) {
+    return buildOutOfDomainReply();
+  }
+
+  if (fileRequestAnswer) {
+    return {
+      content: fileRequestAnswer,
+      sources,
+      showDownloads: true,
+    };
+  }
 
   if (retrievedChunks.length === 0) {
     return {

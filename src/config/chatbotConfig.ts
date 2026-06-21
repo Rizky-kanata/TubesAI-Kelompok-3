@@ -5,14 +5,10 @@ const chatbotConfig: ChatConfig = {
   tagline: "Layanan SSC, Akademik, Ormawa, dan UKM",
   inputPlaceholder: "Tanyakan alur, syarat, link, atau dokumen pendukung...",
   quickPrompts: [
-    "Bagaimana cara mengajukan proposal kegiatan?",
-    "Di mana template proposal kegiatan?",
-    "Apa saja syarat LPJ kegiatan?",
-    "Di mana template LPJ kegiatan?",
-    "Bagaimana cara mengajukan tanda tangan sertifikat kegiatan?",
-    "Bagaimana cara mengurus TAK?",
-    "Di mana link pengumpulan proposal dan LPJ?",
-    "Bagaimana cara menghubungi SSC?"
+    "FAQ Proposal",
+    "FAQ LPJ",
+    "FAQ Sertifikat",
+    "FAQ Kontak SSC"
   ],
   welcomeMessage:
     "Halo, saya siap membantu menjawab pertanyaan seputar layanan SSC, akademik, proposal kegiatan, LPJ, TAK, serta layanan Ormawa dan UKM berdasarkan dokumen yang tersedia.",

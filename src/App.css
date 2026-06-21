@@ -590,6 +590,59 @@ body {
   font-family: 'Poppins', system-ui, sans-serif;
 }
 
+.message-downloads {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(103, 0, 16, 0.16);
+  display: grid;
+  gap: 8px;
+}
+
+.message-download-btn {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(103, 0, 16, 0.28);
+  border-radius: 8px;
+  padding: 7px 10px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+  color: #670010;
+  background: #fff7f7;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.message-download-btn svg {
+  grid-row: span 2;
+}
+
+.message-download-btn span {
+  min-width: 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.message-download-btn small {
+  min-width: 0;
+  color: #64748b;
+  font-size: 0.73rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-download-btn:hover {
+  background: #f3d2d0;
+  box-shadow: 0 5px 14px rgba(103, 0, 16, 0.18);
+  transform: translateY(-1px);
+}
+
 .chat-input {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 96px;

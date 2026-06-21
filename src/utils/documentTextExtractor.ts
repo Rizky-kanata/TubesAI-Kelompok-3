@@ -582,7 +582,7 @@ function readPdfBlockText(block: string): string {
 
 function extractPdfUrls(text: string): string[] {
   const urls = new Set<string>();
-  const urlMatches = text.match(/https?:\/\/[^\s<>()\[\]{}"']+/gi) || [];
+  const urlMatches = text.match(/https?:\/\/[^\s<>()\]{}"']+/gi) || [];
 
   for (const url of urlMatches) {
     urls.add(url.replace(/[.,;:!?]+$/, ""));

@@ -391,14 +391,20 @@ function getAllSources(): string[] {
 export function getActiveKnowledgeSources(): string[] {
   const allSources = getAllSources();
   const storedSources = readStoredActiveSources();
+  const activeUploadedSources = readUploadedDocumentsCache()
+    .filter((document) => document.isActive)
+    .map((document) => document.source);
 
   if (!storedSources) {
     return allSources;
   }
 
-  const activeSources = storedSources.filter((source) =>
-    allSources.includes(source)
-  );
+  const activeSources = [
+    ...new Set([
+      ...storedSources.filter((source) => allSources.includes(source)),
+      ...activeUploadedSources.filter((source) => allSources.includes(source)),
+    ]),
+  ];
 
   return activeSources.length > 0 ? activeSources : allSources;
 }

@@ -9,11 +9,13 @@ export interface Message {
   role: "user" | "model";
   content: string;
   sources?: MessageSource[];
+  showDownloads?: boolean;
 }
 
 export interface BotReply {
   content: string;
   sources: MessageSource[];
+  showDownloads?: boolean;
 }
 
 export interface ChatConfig {

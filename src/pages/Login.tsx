@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { login } from "../services/authService";
+import { login, loginAsGuest } from "../services/authService";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,6 +12,12 @@ const Login = () => {
     const result = login(email, password);
     if (!result.success) return setError(result.message);
     navigate(result.role === "admin" ? "/admin" : "/chat");
+  };
+
+  const handleGuestLogin = () => {
+    loginAsGuest();
+    setError("");
+    navigate("/chat");
   };
 
   return (
@@ -66,6 +72,17 @@ const Login = () => {
           onMouseLeave={(e) => (e.currentTarget.style.background = "#6c63ff")}
         >
           Masuk →
+        </button>
+
+        <button
+          style={styles.guestButton}
+          onClick={handleGuestLogin}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#fff")}
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "rgba(255,255,255,0.88)")
+          }
+        >
+          Masuk sebagai Guest
         </button>
 
         <p style={styles.footerText}>
@@ -160,6 +177,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     transition: "background 0.2s",
     marginTop: "0.5rem",
+    marginBottom: "1.2rem",
+  },
+  guestButton: {
+    width: "100%",
+    padding: "0.9rem",
+    background: "rgba(255,255,255,0.88)",
+    color: "#670010",
+    border: "1px solid rgba(255,255,255,0.6)",
+    borderRadius: "12px",
+    fontSize: "1rem",
+    fontWeight: 700,
+    cursor: "pointer",
+    transition: "background 0.2s",
     marginBottom: "1.2rem",
   },
   footerText: {

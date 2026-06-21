@@ -15,7 +15,7 @@ function App() {
         <Route path="/register" element={<Register />} />
 
         <Route path="/chat" element={
-          <ProtectedRoute allowedRole="user">
+          <ProtectedRoute allowedRoles={["user", "guest"]}>
             <ChatbotUser />
           </ProtectedRoute>
         } />

@@ -29,6 +29,7 @@ const stopWords = new Set([
   "dalam",
   "harus",
   "ini",
+  "isi",
   "itu",
   "jika",
   "ke",
@@ -54,7 +55,7 @@ const queryExpansions = [
     terms: ["proposal", "pendanaan", "dana", "pencairan", "rab", "pengesahan"],
   },
   {
-    matches: ["lpj", "pertanggungjawaban", "laporan", "nota", "evidence"],
+    matches: ["lpj", "pertanggungjawaban", "nota", "evidence"],
     terms: ["lpj", "pertanggungjawaban", "laporan", "nota", "evidence", "presensi"],
   },
   {
@@ -83,6 +84,37 @@ const queryExpansions = [
   },
 ];
 
+const tokenAliases: Record<string, string[]> = {
+  lpj: ["lpg", "lpjj", "lpjnya"],
+  laporan: ["lpaoran", "laproan", "lapran", "lapoan", "lapora", "laporann"],
+  pengajuan: ["pengajuaan", "pengajun", "pngajuan", "pengajuann"],
+  pertanggungjawaban: [
+    "pertangungjawaban",
+    "pertanggungjawban",
+    "pertanggungjawabn",
+    "pertangung",
+  ],
+  pengujian: ["pengujuan", "pengujan", "pengjian", "pegujian", "pengujin"],
+  proposal: ["propsal", "proposl", "porposal", "proposalnya"],
+  sertifikat: ["sertifkat", "sertfikasi", "sertfikat", "sertipikat"],
+  sertifikasi: ["sertifkasi", "sertfikasi", "sertipikasi"],
+  syarat: ["syrat", "sarat", "syart"],
+  alur: ["allur", "alurrr", "alurr"],
+  dokumen: ["dokmen", "document", "dokumenn"],
+  template: ["templete", "templte"],
+  whatsapp: ["whatsap", "watshapp", "wahtsapp"],
+  kontak: ["contact", "kontrak", "kontakknya"],
+};
+
+const aliasLookup = new Map(
+  Object.entries(tokenAliases).flatMap(([canonical, aliases]) =>
+    aliases.map((alias) => [alias, canonical])
+  )
+);
+
+const fuzzyCanonicalTokens = Object.keys(tokenAliases);
+const dynamicCorrectionCache = new WeakMap<KnowledgeChunk[], Map<string, number>>();
+
 function normalizeText(value: string): string {
   return value
     .toLowerCase()
@@ -93,10 +125,150 @@ function normalizeText(value: string): string {
     .trim();
 }
 
+function getEditDistance(a: string, b: string): number {
+  const distances = Array.from({ length: a.length + 1 }, (_, row) =>
+    Array.from({ length: b.length + 1 }, (_, column) =>
+      row === 0 ? column : column === 0 ? row : 0
+    )
+  );
+
+  for (let row = 1; row <= a.length; row += 1) {
+    for (let column = 1; column <= b.length; column += 1) {
+      const substitutionCost = a[row - 1] === b[column - 1] ? 0 : 1;
+      distances[row][column] = Math.min(
+        distances[row - 1][column] + 1,
+        distances[row][column - 1] + 1,
+        distances[row - 1][column - 1] + substitutionCost
+      );
+    }
+  }
+
+  return distances[a.length][b.length];
+}
+
+function normalizeToken(token: string): string {
+  const alias = aliasLookup.get(token);
+
+  if (alias) {
+    return alias;
+  }
+
+  const fuzzyMatch = fuzzyCanonicalTokens.find((canonical) => {
+    if (Math.abs(canonical.length - token.length) > 2) {
+      return false;
+    }
+
+    const maxDistance = canonical.length > 6 ? 2 : 1;
+    return getEditDistance(token, canonical) <= maxDistance;
+  });
+
+  return fuzzyMatch || token;
+}
+
 function tokenize(value: string): string[] {
   return normalizeText(value)
     .split(" ")
+    .map(normalizeToken)
     .filter((token) => token.length > 2 && !stopWords.has(token));
+}
+
+function canFuzzyCorrectToken(token: string): boolean {
+  return /^[a-z]+$/.test(token) && token.length >= 4;
+}
+
+function getDynamicCorrectionLimit(token: string): number {
+  if (token.length >= 10) {
+    return 3;
+  }
+
+  if (token.length >= 6) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function buildDocumentVocabulary(chunks: KnowledgeChunk[]): Map<string, number> {
+  const cachedVocabulary = dynamicCorrectionCache.get(chunks);
+
+  if (cachedVocabulary) {
+    return cachedVocabulary;
+  }
+
+  const vocabulary = new Map<string, number>();
+
+  for (const chunk of chunks) {
+    const tokens = normalizeText(`${chunk.title} ${chunk.section} ${chunk.content}`).split(" ");
+
+    for (const token of tokens) {
+      if (token.length <= 2 || stopWords.has(token) || /\d/.test(token)) {
+        continue;
+      }
+
+      vocabulary.set(token, (vocabulary.get(token) || 0) + 1);
+    }
+  }
+
+  dynamicCorrectionCache.set(chunks, vocabulary);
+  return vocabulary;
+}
+
+function findClosestVocabularyToken(
+  token: string,
+  vocabulary: Map<string, number>
+): string | null {
+  if (!canFuzzyCorrectToken(token) || vocabulary.has(token)) {
+    return null;
+  }
+
+  const distanceLimit = getDynamicCorrectionLimit(token);
+  let bestToken: string | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let bestFrequency = 0;
+
+  for (const [candidate, frequency] of vocabulary) {
+    if (!canFuzzyCorrectToken(candidate)) {
+      continue;
+    }
+
+    if (Math.abs(candidate.length - token.length) > distanceLimit) {
+      continue;
+    }
+
+    const firstLetterDistance = getEditDistance(token.slice(0, 2), candidate.slice(0, 2));
+
+    if (firstLetterDistance > 1) {
+      continue;
+    }
+
+    const distance = getEditDistance(token, candidate);
+
+    if (distance > distanceLimit) {
+      continue;
+    }
+
+    if (
+      distance < bestDistance ||
+      (distance === bestDistance && frequency > bestFrequency)
+    ) {
+      bestToken = candidate;
+      bestDistance = distance;
+      bestFrequency = frequency;
+    }
+  }
+
+  return bestToken;
+}
+
+function correctTokensWithDocumentVocabulary(
+  tokens: string[],
+  chunks: KnowledgeChunk[]
+): string[] {
+  const vocabulary = buildDocumentVocabulary(chunks);
+
+  return tokens.map(
+    (token) => findClosestVocabularyToken(token, vocabulary) || token
+  );
 }
 
 function expandTokens(tokens: string[]): string[] {
@@ -205,6 +377,13 @@ function isFlowQuery(query: string): boolean {
 
 function isLinkQuery(query: string): boolean {
   return /\b(link|tautan|form|url|pengumpulan|unggah|upload)\b/i.test(query);
+}
+
+export function isDocumentFileRequest(query: string): boolean {
+  return (
+    /\b(file|download|unduh|donlod|dolownd)\b/i.test(query) ||
+    /\b(minta|mintakan|kasih|beri|berikan)\b.*\bdokumen\b/i.test(query)
+  );
 }
 
 function isFlowChunk(chunk: KnowledgeChunk): boolean {
@@ -481,7 +660,12 @@ function buildExcerpt(chunk: KnowledgeChunk, queryTokens: string[]): string {
   return excerpt.length > 400 ? `${excerpt.slice(0, 397).trim()}...` : excerpt;
 }
 
-function scoreChunk(chunk: KnowledgeChunk, query: string, queryTokens: string[]): number {
+function scoreChunk(
+  chunk: KnowledgeChunk,
+  query: string,
+  queryTokens: string[],
+  baseTokens: string[]
+): number {
   const titleText = normalizeText(`${chunk.title} ${chunk.section} ${chunk.source}`);
   const contentText = normalizeText(chunk.content);
   const normalizedQuery = normalizeText(query);
@@ -496,6 +680,16 @@ function scoreChunk(chunk: KnowledgeChunk, query: string, queryTokens: string[])
     if (occurrences > 0) {
       score += 1.2 + occurrences * 0.8;
     }
+  }
+
+  const matchedBaseTokens = baseTokens.filter(
+    (token) =>
+      containsExactTerm(titleText, token) || containsExactTerm(contentText, token)
+  );
+
+  if (baseTokens.length > 1) {
+    score += matchedBaseTokens.length * 5;
+    score += (matchedBaseTokens.length / baseTokens.length) * 8;
   }
 
   const phrases = normalizedQuery
@@ -519,6 +713,24 @@ function scoreChunk(chunk: KnowledgeChunk, query: string, queryTokens: string[])
     }
   }
 
+  const correctedPhrases = baseTokens.reduce<string[]>((result, token, index, tokens) => {
+    if (index < tokens.length - 1) {
+      result.push(`${token} ${tokens[index + 1]}`);
+    }
+
+    return result;
+  }, []);
+
+  for (const phrase of correctedPhrases) {
+    if (titleText.includes(phrase)) {
+      score += 14;
+    }
+
+    if (contentText.includes(phrase)) {
+      score += 9;
+    }
+  }
+
   return score;
 }
 
@@ -526,20 +738,25 @@ export async function retrieveRelevantChunks(
   query: string,
   limit = 5
 ): Promise<RetrievedChunk[]> {
-  const baseTokens = tokenize(query);
-  const queryTokens = expandTokens(baseTokens);
-  const activeSources = new Set(getActiveKnowledgeSources());
   const allChunks = await getAllKnowledgeChunks();
+  const activeSources = new Set(getActiveKnowledgeSources());
+  const activeChunks = allChunks.filter((chunk) =>
+    activeSources.has(chunk.source)
+  );
+  const baseTokens = correctTokensWithDocumentVocabulary(
+    tokenize(query),
+    activeChunks
+  );
+  const queryTokens = expandTokens(baseTokens);
 
   if (queryTokens.length === 0) {
     return [];
   }
 
-  return allChunks
-    .filter((chunk) => activeSources.has(chunk.source))
+  return activeChunks
     .map((chunk) => ({
       ...chunk,
-      score: scoreChunk(chunk, query, queryTokens),
+      score: scoreChunk(chunk, query, queryTokens, baseTokens),
       excerpt: buildExcerpt(chunk, queryTokens),
     }))
     .filter((chunk) => chunk.score > 0)
@@ -586,6 +803,127 @@ export function toMessageSources(chunks: RetrievedChunk[], limit = 4): MessageSo
   return [...sources.values()];
 }
 
+function getChunkSearchText(chunk: KnowledgeChunk): string {
+  return normalizeText(`${chunk.title} ${chunk.section} ${chunk.source} ${chunk.content}`);
+}
+
+function matchesAnyTerm(text: string, terms: string[]): boolean {
+  return terms.some(
+    (term) => containsExactTerm(text, term) || text.includes(term)
+  );
+}
+
+export function getDocumentFileRequestChunks(
+  query: string,
+  chunks: RetrievedChunk[],
+  limit = 4
+): RetrievedChunk[] {
+  if (!isDocumentFileRequest(query)) {
+    return chunks.slice(0, limit);
+  }
+
+  const queryTokens = new Set(tokenize(query));
+  let candidates = [...chunks];
+
+  const entityFilters: Array<{ active: boolean; terms: string[] }> = [
+    {
+      active: queryTokens.has("lpj") || queryTokens.has("pertanggungjawaban"),
+      terms: ["lpj", "pertanggungjawaban"],
+    },
+    {
+      active:
+        queryTokens.has("proposal") ||
+        queryTokens.has("pendanaan") ||
+        queryTokens.has("dana"),
+      terms: ["proposal", "pendanaan", "dana"],
+    },
+    {
+      active: queryTokens.has("sertifikat") || queryTokens.has("sertifikasi"),
+      terms: ["sertifikat", "sertifikasi"],
+    },
+    {
+      active: queryTokens.has("tak") || queryTokens.has("transkrip"),
+      terms: ["tak", "transkrip", "aktivitas", "kemahasiswaan"],
+    },
+  ];
+
+  for (const filter of entityFilters) {
+    if (!filter.active) {
+      continue;
+    }
+
+    const filteredCandidates = candidates.filter((chunk) =>
+      matchesAnyTerm(getChunkSearchText(chunk), filter.terms)
+    );
+
+    if (filteredCandidates.length > 0) {
+      candidates = filteredCandidates;
+    }
+  }
+
+  const detailFilters: Array<{ active: boolean; terms: string[] }> = [
+    {
+      active:
+        queryTokens.has("syarat") ||
+        queryTokens.has("dokumen") ||
+        queryTokens.has("lampiran") ||
+        queryTokens.has("kelengkapan"),
+      terms: ["syarat", "dokumen", "lampiran", "kelengkapan"],
+    },
+    {
+      active: queryTokens.has("alur") || queryTokens.has("prosedur"),
+      terms: ["alur", "prosedur", "tahapan", "langkah"],
+    },
+    {
+      active: queryTokens.has("template"),
+      terms: ["template"],
+    },
+  ];
+
+  for (const filter of detailFilters) {
+    if (!filter.active) {
+      continue;
+    }
+
+    const filteredCandidates = candidates.filter((chunk) =>
+      matchesAnyTerm(getChunkSearchText(chunk), filter.terms)
+    );
+
+    if (filteredCandidates.length > 0) {
+      candidates = filteredCandidates;
+    }
+  }
+
+  const uniqueSources = new Set<string>();
+  return candidates
+    .filter((chunk) => {
+      if (uniqueSources.has(chunk.source)) {
+        return false;
+      }
+
+      uniqueSources.add(chunk.source);
+      return true;
+    })
+    .slice(0, limit);
+}
+
+export function buildDocumentFileRequestAnswer(
+  query: string,
+  chunks: RetrievedChunk[]
+): string | null {
+  if (!isDocumentFileRequest(query)) {
+    return null;
+  }
+
+  const fileChunks = getDocumentFileRequestChunks(query, chunks);
+
+  if (fileChunks.length === 0) {
+    return "Saya belum menemukan file yang cocok dengan permintaan tersebut.";
+  }
+
+  return "Berikut file yang sesuai. Silakan klik tombol Download file di bawah jawaban ini.";
+}
+
 export function buildLocalFallbackAnswer(
   query: string,
   chunks: RetrievedChunk[],
@@ -598,7 +936,13 @@ export function buildLocalFallbackAnswer(
     );
   }
 
-  const wantsSources = /\b(sumber|dokumen|file|referensi)\b/i.test(query);
+  const fileRequestAnswer = buildDocumentFileRequestAnswer(query, chunks);
+
+  if (fileRequestAnswer) {
+    return fileRequestAnswer;
+  }
+
+  const wantsSources = /\b(sumber|referensi)\b/i.test(query);
 
   if (wantsSources) {
     return (
