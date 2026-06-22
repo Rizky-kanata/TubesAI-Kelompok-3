@@ -76,8 +76,32 @@ const queryExpansions = [
     terms: ["file", "dokumen", "download", "unduh", "pdf", "word", "excel"],
   },
   {
-    matches: ["kontak", "contact", "cp", "whatsapp", "wa"],
-    terms: ["contact", "person", "whatsapp", "wa", "vio", "0821"],
+    matches: [
+      "kontak",
+      "contact",
+      "cp",
+      "nomor",
+      "telepon",
+      "whatsapp",
+      "hotline",
+      "email",
+      "instagram",
+      "wa",
+    ],
+    terms: [
+      "contact",
+      "person",
+      "kontak",
+      "nomor",
+      "telepon",
+      "whatsapp",
+      "hotline",
+      "email",
+      "instagram",
+      "wa",
+      "0811",
+      "0812",
+    ],
   },
   {
     matches: ["alur", "prosedur", "tahapan", "langkah"],
@@ -110,8 +134,13 @@ const tokenAliases: Record<string, string[]> = {
   template: ["templete", "templte"],
   unggah: ["ungah", "unggahh", "unggha"],
   upload: ["uplod", "uplot", "aplod"],
-  whatsapp: ["whatsap", "watshapp", "wahtsapp"],
-  kontak: ["contact", "kontrak", "kontakknya"],
+  nomor: ["nomer", "nmr", "number"],
+  telepon: ["telpon", "telp", "phone", "ponsel"],
+  whatsapp: ["whatsap", "watshapp", "wahtsapp", "whatapp", "watsap", "wa"],
+  hotline: ["hot line", "hotlain"],
+  email: ["e-mail", "mail"],
+  instagram: ["ig", "insta"],
+  kontak: ["contact", "kontrak", "kontakknya", "cp"],
 };
 
 const aliasLookup = new Map(
@@ -387,6 +416,26 @@ function isLinkQuery(query: string): boolean {
   return /\b(link|tautan|form|url|pengumpulan|unggah|upload)\b/i.test(query);
 }
 
+function isContactQuery(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  const queryTokens = new Set(tokenize(query));
+
+  return (
+    /\b(no|nomor|nomer|nmr|number|kontak|contact|cp|whatsapp|whatsap|whatapp|watsap|wa|hotline|telepon|telpon|telp|hp|email|e-mail|instagram|ig)\b/i.test(
+      normalizedQuery
+    ) ||
+    [
+      "nomor",
+      "kontak",
+      "whatsapp",
+      "hotline",
+      "telepon",
+      "email",
+      "instagram",
+    ].some((token) => queryTokens.has(token))
+  );
+}
+
 export function isDocumentFileRequest(query: string): boolean {
   return (
     /\b(file|download|unduh|donlod|dolownd)\b/i.test(query) ||
@@ -409,6 +458,69 @@ function isHeadingLine(line: string, chunk: KnowledgeChunk): boolean {
     normalizedLine === normalizedSection ||
     normalizedLine === "catatan:" ||
     normalizedLine.startsWith("alur pengajuan")
+  );
+}
+
+function isSectionHeadingLine(line: string): boolean {
+  return /^[A-Z]\.\s+/.test(line);
+}
+
+function isNumberedStepLine(line: string): boolean {
+  return /^\d+[.)]\s+/.test(line);
+}
+
+function stripStepNumber(line: string): string {
+  return line.replace(/^\d+[.)]\s+/, "").trim();
+}
+
+function normalizeFlowLines(lines: string[]): string[] {
+  const normalizedLines: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+
+    if (!line) {
+      continue;
+    }
+
+    if (/^\d+[.)]?$/.test(line) && lines[index + 1]) {
+      normalizedLines.push(`${line.replace(/[.)]?$/, ".")} ${lines[index + 1].trim()}`);
+      index += 1;
+      continue;
+    }
+
+    normalizedLines.push(line);
+  }
+
+  return normalizedLines;
+}
+
+function getFocusedFlowLines(lines: string[]): string[] {
+  const preferredFlowHeadingIndex = lines.findIndex(
+    (line) =>
+      (/^[A-Z]\.\s+/.test(line) || /\balur\s+umum\b/i.test(line)) &&
+      /\balur\b/i.test(line) &&
+      /\b(umum|menghubungi|pengajuan|prosedur|tahapan|langkah)\b/i.test(line)
+  );
+  const flowHeadingIndex =
+    preferredFlowHeadingIndex !== -1
+      ? preferredFlowHeadingIndex
+      : lines.findIndex((line) =>
+          /\balur\b/i.test(line) &&
+          /\b(umum|menghubungi|pengajuan|prosedur|tahapan|langkah)\b/i.test(line)
+  );
+
+  if (flowHeadingIndex === -1) {
+    return lines;
+  }
+
+  const nextSectionIndex = lines.findIndex(
+    (line, index) => index > flowHeadingIndex && isSectionHeadingLine(line)
+  );
+
+  return lines.slice(
+    flowHeadingIndex + 1,
+    nextSectionIndex === -1 ? lines.length : nextSectionIndex
   );
 }
 
@@ -441,12 +553,290 @@ function buildNumberedFlowAnswer(
     )
     .filter((line, index, lines) => lines.indexOf(line) === index);
 
-  if (steps.length === 0) {
+  const focusedLines = getFocusedFlowLines(normalizeFlowLines(steps));
+  const numberedSteps = focusedLines
+    .filter(isNumberedStepLine)
+    .map(stripStepNumber)
+    .filter(Boolean);
+  const finalSteps =
+    numberedSteps.length >= 2
+      ? numberedSteps
+      : focusedLines.filter((line) => !isSectionHeadingLine(line));
+
+  if (finalSteps.length === 0) {
     return null;
   }
 
-  const numberedSteps = steps.map((step, index) => `${index + 1}. ${step}`).join("\n");
-  return `Berikut alurnya:\n${numberedSteps}`;
+  const formattedSteps = finalSteps
+    .map((step, index) => `${index + 1}. ${step}`)
+    .join("\n");
+  return `Berikut alurnya:\n${formattedSteps}`;
+}
+
+interface ContactItem {
+  label: string;
+  type: "WhatsApp" | "Hotline" | "Nomor" | "Email" | "Instagram";
+  value: string;
+  location?: string;
+}
+
+function extractPhoneNumbers(line: string): string[] {
+  return (line.match(/(?:\+?62|0)\d[\d\s-]{6,}\d/g) || [])
+    .map((number) => number.replace(/\s+/g, " ").trim())
+    .filter((number, index, numbers) => numbers.indexOf(number) === index);
+}
+
+function extractEmails(line: string): string[] {
+  return (line.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [])
+    .map((email) => email.trim())
+    .filter((email, index, emails) => emails.indexOf(email) === index);
+}
+
+function extractInstagramHandles(line: string): string[] {
+  return (line.match(/@[a-z0-9._]{3,}/gi) || [])
+    .map((handle) => handle.trim())
+    .filter((handle, index, handles) => handles.indexOf(handle) === index);
+}
+
+function getContactLocation(sectionHeading: string, line: string): string | undefined {
+  const text = normalizeText(`${sectionHeading} ${line}`);
+
+  if (text.includes("surabaya") || text.includes("sby")) {
+    return "Telkom University Surabaya";
+  }
+
+  if (text.includes("bandung") || text.includes("kampus utama")) {
+    return "Telkom University Bandung";
+  }
+
+  return undefined;
+}
+
+function getPhoneContactType(line: string): ContactItem["type"] {
+  const normalizedLine = normalizeText(line);
+
+  if (normalizedLine.includes("whatsapp") || /\bwa\b/.test(normalizedLine)) {
+    return "WhatsApp";
+  }
+
+  if (normalizedLine.includes("hotline")) {
+    return "Hotline";
+  }
+
+  return "Nomor";
+}
+
+function getContactLabel(line: string, type: ContactItem["type"]): string {
+  const cleanedLine = line.replace(/^\d+[.)]\s*/, "").trim();
+  const colonLabel = cleanedLine.split(":")[0]?.trim();
+
+  if (colonLabel && colonLabel.length <= 80 && colonLabel !== cleanedLine) {
+    return colonLabel;
+  }
+
+  const normalizedLine = normalizeText(line);
+
+  if (normalizedLine.includes("admin keuangan") || normalizedLine.includes("bpp")) {
+    return "Admin Keuangan BPP";
+  }
+
+  if (normalizedLine.includes("admisi")) {
+    return "Layanan Admisi";
+  }
+
+  if (normalizedLine.includes("instagram")) {
+    return "Instagram SSC";
+  }
+
+  if (normalizedLine.includes("email")) {
+    return "Email SSC";
+  }
+
+  if (normalizedLine.includes("hotline")) {
+    return "Hotline";
+  }
+
+  return `Kontak ${type}`;
+}
+
+function extractContactItemsFromChunks(chunks: KnowledgeChunk[]): ContactItem[] {
+  const contacts: ContactItem[] = [];
+
+  for (const chunk of chunks) {
+    let sectionHeading = "";
+    const lines = chunk.content
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    for (const line of lines) {
+      if (/^[A-Z]\.\s+/.test(line) && /\bkontak\b/i.test(line)) {
+        sectionHeading = line;
+        continue;
+      }
+
+      const location = getContactLocation(sectionHeading, line);
+      const phoneNumbers = extractPhoneNumbers(line);
+      const emails = extractEmails(line);
+      const instagramHandles = extractInstagramHandles(line);
+
+      for (const value of phoneNumbers) {
+        const type = getPhoneContactType(line);
+        contacts.push({
+          label: getContactLabel(line, type),
+          type,
+          value,
+          location,
+        });
+      }
+
+      for (const value of emails) {
+        contacts.push({
+          label: getContactLabel(line, "Email"),
+          type: "Email",
+          value,
+          location,
+        });
+      }
+
+      for (const value of instagramHandles) {
+        contacts.push({
+          label: getContactLabel(line, "Instagram"),
+          type: "Instagram",
+          value,
+          location,
+        });
+      }
+    }
+  }
+
+  const seenContacts = new Set<string>();
+  return contacts.filter((contact) => {
+    const key = `${contact.type}-${contact.value}-${contact.location || ""}`;
+
+    if (seenContacts.has(key)) {
+      return false;
+    }
+
+    seenContacts.add(key);
+    return true;
+  });
+}
+
+function filterContactItems(query: string, contacts: ContactItem[]): ContactItem[] {
+  const normalizedQuery = normalizeText(query);
+  const wantsSurabaya = /\b(surabaya|sby)\b/.test(normalizedQuery);
+  const wantsBandung = /\b(bandung|bdg|kampus utama)\b/.test(normalizedQuery);
+  const wantsWhatsapp = /\b(whatsapp|whatsap|whatapp|watsap|wa)\b/.test(normalizedQuery);
+  const wantsHotline = /\b(hotline|hot line)\b/.test(normalizedQuery);
+  const wantsEmail = /\b(email|e-mail|mail)\b/.test(normalizedQuery);
+  const wantsInstagram = /\b(instagram|ig|insta)\b/.test(normalizedQuery);
+  const wantsPhone =
+    /\b(no|nomor|nomer|nmr|number|telepon|telpon|telp|hp)\b/.test(
+      normalizedQuery
+    ) ||
+    wantsWhatsapp ||
+    wantsHotline;
+
+  let filteredContacts = contacts;
+
+  if (wantsSurabaya) {
+    const locationMatches = filteredContacts.filter((contact) =>
+      normalizeText(contact.location || "").includes("surabaya")
+    );
+
+    if (locationMatches.length > 0) {
+      filteredContacts = locationMatches;
+    }
+  }
+
+  if (wantsBandung) {
+    const locationMatches = filteredContacts.filter((contact) =>
+      normalizeText(contact.location || "").includes("bandung")
+    );
+
+    if (locationMatches.length > 0) {
+      filteredContacts = locationMatches;
+    }
+  }
+
+  const requestedTypes = new Set<ContactItem["type"]>();
+
+  if (wantsWhatsapp) {
+    requestedTypes.add("WhatsApp");
+  }
+
+  if (wantsHotline) {
+    requestedTypes.add("Hotline");
+  }
+
+  if (wantsEmail) {
+    requestedTypes.add("Email");
+  }
+
+  if (wantsInstagram) {
+    requestedTypes.add("Instagram");
+  }
+
+  if (wantsPhone && requestedTypes.size === 0) {
+    requestedTypes.add("WhatsApp");
+    requestedTypes.add("Hotline");
+    requestedTypes.add("Nomor");
+  }
+
+  if (requestedTypes.size > 0) {
+    const typeMatches = filteredContacts.filter((contact) =>
+      requestedTypes.has(contact.type)
+    );
+
+    if (typeMatches.length > 0) {
+      filteredContacts = typeMatches;
+    }
+  }
+
+  return filteredContacts;
+}
+
+function buildContactAnswer(
+  query: string,
+  chunks: RetrievedChunk[],
+  allChunks = getAllKnowledgeChunksSync()
+): string | null {
+  if (!isContactQuery(query)) {
+    return null;
+  }
+
+  const activeSources = new Set(getActiveKnowledgeSources());
+  const activeChunks = allChunks.filter((chunk) => activeSources.has(chunk.source));
+  const chunkContacts = filterContactItems(
+    query,
+    extractContactItemsFromChunks(chunks)
+  );
+  const contacts =
+    chunkContacts.length > 0
+      ? chunkContacts
+      : filterContactItems(query, extractContactItemsFromChunks(activeChunks));
+
+  if (contacts.length === 0) {
+    return null;
+  }
+
+  const formattedContacts = contacts
+    .slice(0, 6)
+    .map((contact, index) => {
+      const valueLabel =
+        contact.type === "Email"
+          ? "Email"
+          : contact.type === "Instagram"
+            ? "Instagram"
+            : "Nomor";
+      const location = contact.location ? ` - ${contact.location}` : "";
+
+      return `${index + 1}. ${contact.label} (${contact.type})${location}\n${valueLabel}: ${contact.value}`;
+    })
+    .join("\n\n");
+
+  return `Berikut kontak yang ditemukan pada dokumen:\n${formattedContacts}`;
 }
 
 function getLinkLabel(chunk: KnowledgeChunk, line: string): string {
@@ -1004,31 +1394,23 @@ export function buildDocumentFileRequestAnswer(
   return "Berikut file yang sesuai. Silakan klik tombol download di bawah jawaban ini.";
 }
 
-export function buildLocalFallbackAnswer(
+export function buildDirectKnowledgeAnswer(
   query: string,
   chunks: RetrievedChunk[],
   allChunks = getAllKnowledgeChunksSync()
-): string {
+): string | null {
+  if (isDocumentFileRequest(query)) {
+    return null;
+  }
+
+  const contactAnswer = buildContactAnswer(query, chunks, allChunks);
+
+  if (contactAnswer) {
+    return contactAnswer;
+  }
+
   if (chunks.length === 0) {
-    return (
-      "Saya belum menemukan informasi yang cocok pada dokumen yang tersedia. " +
-      "Coba gunakan kata kunci seperti proposal, LPJ, sertifikasi, link, atau contact person."
-    );
-  }
-
-  const fileRequestAnswer = buildDocumentFileRequestAnswer(query, chunks);
-
-  if (fileRequestAnswer) {
-    return fileRequestAnswer;
-  }
-
-  const wantsSources = /\b(sumber|referensi)\b/i.test(query);
-
-  if (wantsSources) {
-    return (
-      "Sumber data tersimpan di knowledge base internal aplikasi dan tidak ditampilkan di halaman. " +
-      "Silakan tanyakan isi informasi yang dibutuhkan, seperti alur proposal, syarat LPJ, atau sertifikasi."
-    );
+    return null;
   }
 
   const submissionLinkAnswer = buildRequestedSubmissionLinkAnswer(query, allChunks);
@@ -1057,6 +1439,42 @@ export function buildLocalFallbackAnswer(
     if (flowAnswer) {
       return flowAnswer;
     }
+  }
+
+  return null;
+}
+
+export function buildLocalFallbackAnswer(
+  query: string,
+  chunks: RetrievedChunk[],
+  allChunks = getAllKnowledgeChunksSync()
+): string {
+  if (chunks.length === 0) {
+    return (
+      "Saya belum menemukan informasi yang cocok pada dokumen yang tersedia. " +
+      "Coba gunakan kata kunci seperti proposal, LPJ, sertifikasi, link, atau contact person."
+    );
+  }
+
+  const fileRequestAnswer = buildDocumentFileRequestAnswer(query, chunks);
+
+  if (fileRequestAnswer) {
+    return fileRequestAnswer;
+  }
+
+  const wantsSources = /\b(sumber|referensi)\b/i.test(query);
+
+  if (wantsSources) {
+    return (
+      "Sumber data tersimpan di knowledge base internal aplikasi dan tidak ditampilkan di halaman. " +
+      "Silakan tanyakan isi informasi yang dibutuhkan, seperti alur proposal, syarat LPJ, atau sertifikasi."
+    );
+  }
+
+  const directKnowledgeAnswer = buildDirectKnowledgeAnswer(query, chunks, allChunks);
+
+  if (directKnowledgeAnswer) {
+    return directKnowledgeAnswer;
   }
 
   const facts = chunks

@@ -3,6 +3,7 @@ import type { BotReply, DownloadableFile, Message } from "../types/Message";
 import { getKnowledgeDocuments } from "./knowledgeAdminService";
 import {
   buildDocumentFileRequestAnswer,
+  buildDirectKnowledgeAnswer,
   buildLocalFallbackAnswer,
   buildRequestedSubmissionLinkAnswer,
   getDocumentFileRequestChunks,
@@ -209,10 +210,6 @@ export async function sendMessage(
     : retrievedChunks;
   const sources = toMessageSources(responseChunks);
 
-  if (retrievedChunks.length === 0 && isOutOfDomainRequest(prompt)) {
-    return buildOutOfDomainReply();
-  }
-
   if (fileRequestAnswer) {
     const downloads = buildDownloadableFiles(responseChunks);
 
@@ -224,6 +221,22 @@ export async function sendMessage(
       showDownloads: downloads.length > 0,
       downloads,
     };
+  }
+
+  const directKnowledgeAnswer = buildDirectKnowledgeAnswer(
+    prompt,
+    retrievedChunks
+  );
+
+  if (directKnowledgeAnswer) {
+    return {
+      content: directKnowledgeAnswer,
+      sources,
+    };
+  }
+
+  if (retrievedChunks.length === 0 && isOutOfDomainRequest(prompt)) {
+    return buildOutOfDomainReply();
   }
 
   if (retrievedChunks.length === 0) {

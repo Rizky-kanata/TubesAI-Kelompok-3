@@ -264,7 +264,7 @@ function AdminDashboard() {
         <header className="admin-dashboard-header">
           <div>
             <span className="admin-eyebrow">Dashboard Admin</span>
-            <h1 id="admin-title">Knowledge Base SSC</h1>
+            <h1 id="admin-title">Dataset Sumber SSC</h1>
             <p>Kelola dokumen yang digunakan chatbot untuk menjawab pertanyaan.</p>
           </div>
 
