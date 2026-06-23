@@ -213,6 +213,15 @@ export async function sendMessage(
   if (fileRequestAnswer) {
     const downloads = buildDownloadableFiles(responseChunks);
 
+    if (responseChunks.length === 0) {
+      return {
+        content: fileRequestAnswer,
+        sources: [],
+        showDownloads: false,
+        downloads: [],
+      };
+    }
+
     return {
       content: downloads.length
         ? fileRequestAnswer

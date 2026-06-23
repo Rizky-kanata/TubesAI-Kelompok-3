@@ -4,6 +4,7 @@ import {
   getAllKnowledgeChunks,
   getAllKnowledgeChunksSync,
   getKnowledgeDocuments,
+  type KnowledgeDocument,
 } from "./knowledgeAdminService";
 import type { MessageSource } from "../types/Message";
 
@@ -336,6 +337,11 @@ function containsExactTerm(text: string, term: string): boolean {
   return countOccurrences(text, term) > 0;
 }
 
+function hasNormalizedTerm(text: string, term: string): boolean {
+  const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^a-z0-9])${escapedTerm}(?:$|[^a-z0-9])`).test(text);
+}
+
 function extractFaqQuestion(content: string): string | null {
   const match = content.match(/^Question\s*:\s*(.+)$/im);
   return match?.[1]?.trim() || null;
@@ -448,6 +454,76 @@ function isFlowChunk(chunk: KnowledgeChunk): boolean {
   return /\balur\b/i.test(`${chunk.title} ${chunk.section} ${chunk.content}`);
 }
 
+function getChunkSearchText(chunk: KnowledgeChunk): string {
+  return normalizeText(`${chunk.title} ${chunk.section} ${chunk.source} ${chunk.content}`);
+}
+
+function getQueryTopicTerms(query: string): string[] {
+  const queryTokens = new Set(tokenize(query));
+
+  if (
+    queryTokens.has("proposal") ||
+    queryTokens.has("pendanaan") ||
+    queryTokens.has("dana")
+  ) {
+    return ["proposal", "pendanaan", "dana", "pencairan"];
+  }
+
+  if (queryTokens.has("lpj") || queryTokens.has("pertanggungjawaban")) {
+    return ["lpj", "pertanggungjawaban", "laporan"];
+  }
+
+  if (queryTokens.has("sertifikat") || queryTokens.has("sertifikasi")) {
+    return ["sertifikat", "sertifikasi"];
+  }
+
+  if (queryTokens.has("tak") || queryTokens.has("transkrip")) {
+    return ["tak", "transkrip", "aktivitas", "kemahasiswaan"];
+  }
+
+  return [];
+}
+
+function focusChunksByQueryTopic<T extends KnowledgeChunk>(
+  query: string,
+  chunks: T[]
+): T[] {
+  const topicTerms = getQueryTopicTerms(query);
+
+  if (topicTerms.length === 0) {
+    return chunks;
+  }
+
+  const focusedChunks = chunks.filter((chunk) =>
+    matchesAnyTerm(getChunkSearchText(chunk), topicTerms)
+  );
+
+  return focusedChunks;
+}
+
+function findFlowSeedChunk(
+  query: string,
+  chunks: RetrievedChunk[]
+): RetrievedChunk | null {
+  const flowChunks = chunks.filter(isFlowChunk);
+
+  if (flowChunks.length === 0) {
+    return null;
+  }
+
+  const topicTerms = getQueryTopicTerms(query);
+
+  if (topicTerms.length === 0) {
+    return flowChunks[0];
+  }
+
+  return (
+    flowChunks.find((chunk) =>
+      matchesAnyTerm(getChunkSearchText(chunk), topicTerms)
+    ) || null
+  );
+}
+
 function isHeadingLine(line: string, chunk: KnowledgeChunk): boolean {
   const normalizedLine = normalizeText(line);
   const normalizedTitle = normalizeText(chunk.title);
@@ -525,10 +601,11 @@ function getFocusedFlowLines(lines: string[]): string[] {
 }
 
 function buildNumberedFlowAnswer(
+  query: string,
   chunks: RetrievedChunk[],
   allChunks = getAllKnowledgeChunksSync()
 ): string | null {
-  const seedChunk = chunks.find(isFlowChunk);
+  const seedChunk = findFlowSeedChunk(query, chunks);
 
   if (!seedChunk) {
     return null;
@@ -1152,13 +1229,15 @@ export async function retrieveRelevantChunks(
     return [];
   }
 
-  return activeChunks
+  const scoredChunks = activeChunks
     .map((chunk) => ({
       ...chunk,
       score: scoreChunk(chunk, query, queryTokens, baseTokens),
       excerpt: buildExcerpt(chunk, queryTokens),
     }))
-    .filter((chunk) => chunk.score > 0)
+    .filter((chunk) => chunk.score > 0);
+
+  return focusChunksByQueryTopic(query, scoredChunks)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 }
@@ -1202,10 +1281,6 @@ export function toMessageSources(chunks: RetrievedChunk[], limit = 4): MessageSo
   return [...sources.values()];
 }
 
-function getChunkSearchText(chunk: KnowledgeChunk): string {
-  return normalizeText(`${chunk.title} ${chunk.section} ${chunk.source} ${chunk.content}`);
-}
-
 function matchesAnyTerm(text: string, terms: string[]): boolean {
   return terms.some(
     (term) => containsExactTerm(text, term) || text.includes(term)
@@ -1214,32 +1289,36 @@ function matchesAnyTerm(text: string, terms: string[]): boolean {
 
 function getRequestedFileExtensions(query: string): string[] {
   const normalizedQuery = normalizeText(query);
-  const extensions: string[] = [];
+  const extensions = new Set<string>();
 
-  if (containsExactTerm(normalizedQuery, "pdf")) {
-    extensions.push("pdf");
+  if (hasNormalizedTerm(normalizedQuery, "pdf")) {
+    extensions.add("pdf");
   }
 
   if (
-    containsExactTerm(normalizedQuery, "word") ||
-    containsExactTerm(normalizedQuery, "doc") ||
-    containsExactTerm(normalizedQuery, "docx")
+    hasNormalizedTerm(normalizedQuery, "word") ||
+    hasNormalizedTerm(normalizedQuery, "doc") ||
+    hasNormalizedTerm(normalizedQuery, "docx")
   ) {
-    extensions.push("doc", "docx");
+    extensions.add("doc");
+    extensions.add("docx");
   }
 
   if (
-    containsExactTerm(normalizedQuery, "excel") ||
-    containsExactTerm(normalizedQuery, "xls") ||
-    containsExactTerm(normalizedQuery, "xlsx") ||
-    containsExactTerm(normalizedQuery, "xlsm") ||
-    containsExactTerm(normalizedQuery, "csv") ||
-    containsExactTerm(normalizedQuery, "spreadsheet")
+    hasNormalizedTerm(normalizedQuery, "excel") ||
+    hasNormalizedTerm(normalizedQuery, "xls") ||
+    hasNormalizedTerm(normalizedQuery, "xlsx") ||
+    hasNormalizedTerm(normalizedQuery, "xlsm") ||
+    hasNormalizedTerm(normalizedQuery, "csv") ||
+    hasNormalizedTerm(normalizedQuery, "spreadsheet")
   ) {
-    extensions.push("xls", "xlsx", "xlsm", "csv");
+    extensions.add("xls");
+    extensions.add("xlsx");
+    extensions.add("xlsm");
+    extensions.add("csv");
   }
 
-  return extensions;
+  return [...extensions];
 }
 
 function getFileExtension(value = ""): string {
@@ -1260,41 +1339,252 @@ function getExtensionFromFileType(fileType = ""): string {
   return extensionByType[fileType.toLowerCase()] || "";
 }
 
-function sourceMatchesExtensions(source: string, extensions: string[]): boolean {
-  const document = getKnowledgeDocuments().find(
-    (item) => item.source === source || item.id === source
-  );
+function documentMatchesExtensions(
+  document: KnowledgeDocument,
+  extensions: string[]
+): boolean {
   const candidateExtensions = [
-    getFileExtension(source),
-    getFileExtension(document?.source),
+    getFileExtension(document.source),
     getFileExtension(document?.fileName),
+    getFileExtension(document?.fileUrl),
     getExtensionFromFileType(document?.fileType),
   ].filter(Boolean);
 
   return candidateExtensions.some((extension) => extensions.includes(extension));
 }
 
-export function getDocumentFileRequestChunks(
-  query: string,
-  chunks: RetrievedChunk[],
-  limit = 4
-): RetrievedChunk[] {
-  if (!isDocumentFileRequest(query)) {
-    return chunks.slice(0, limit);
+const fileRequestNoiseTokens = new Set([
+  "beri",
+  "berikan",
+  "bentuk",
+  "csv",
+  "data",
+  "doc",
+  "docx",
+  "dokumen",
+  "dolownd",
+  "donlod",
+  "download",
+  "excel",
+  "file",
+  "format",
+  "kasih",
+  "kirim",
+  "minta",
+  "mintakan",
+  "pdf",
+  "spreadsheet",
+  "tolong",
+  "unduh",
+  "word",
+  "xls",
+  "xlsm",
+  "xlsx",
+]);
+
+const knownDocumentIntentTokens = new Set([
+  "alur",
+  "aktivitas",
+  "dana",
+  "kelengkapan",
+  "lampiran",
+  "lpj",
+  "pendanaan",
+  "pengajuan",
+  "pertanggungjawaban",
+  "proposal",
+  "prosedur",
+  "sertifikat",
+  "sertifikasi",
+  "syarat",
+  "tak",
+  "template",
+  "transkrip",
+]);
+
+function getRequestedFileNameTokens(query: string): string[] {
+  const uniqueTokens = new Set(
+    tokenize(query).filter((token) => !fileRequestNoiseTokens.has(token))
+  );
+
+  return [...uniqueTokens];
+}
+
+function getDocumentNameSearchText(document: KnowledgeDocument): string {
+  return normalizeText(
+    [
+      document.fileName,
+      document.source,
+      document.title,
+      document.sections.join(" "),
+      document.fileUrl,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function getDocumentFullSearchText(document: KnowledgeDocument): string {
+  return normalizeText(
+    [
+      getDocumentNameSearchText(document),
+      document.content,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function documentMatchesAllNameTokens(
+  document: KnowledgeDocument,
+  tokens: string[]
+): boolean {
+  const nameText = getDocumentNameSearchText(document);
+  return tokens.every((token) => matchesAnyTerm(nameText, [token]));
+}
+
+function documentMatchesAnyNameToken(
+  document: KnowledgeDocument,
+  tokens: string[]
+): boolean {
+  const nameText = getDocumentNameSearchText(document);
+  return tokens.some((token) => matchesAnyTerm(nameText, [token]));
+}
+
+function filterDocumentsByNameRequest(
+  documents: KnowledgeDocument[],
+  nameTokens: string[]
+): KnowledgeDocument[] {
+  if (nameTokens.length === 0) {
+    return documents;
   }
 
-  const queryTokens = new Set(tokenize(query));
-  let candidates = [...chunks];
+  const exactNameMatches = documents.filter((document) =>
+    documentMatchesAllNameTokens(document, nameTokens)
+  );
+
+  if (exactNameMatches.length > 0) {
+    return exactNameMatches;
+  }
+
+  const strictNameTokens = nameTokens.filter(
+    (token) => !knownDocumentIntentTokens.has(token)
+  );
+
+  if (strictNameTokens.length > 0) {
+    return documents.filter((document) =>
+      documentMatchesAllNameTokens(document, strictNameTokens)
+    );
+  }
+
+  const partialNameMatches = documents.filter((document) =>
+    documentMatchesAnyNameToken(document, nameTokens)
+  );
+
+  return partialNameMatches.length > 0 ? partialNameMatches : documents;
+}
+
+function filterDocumentsByTerms(
+  documents: KnowledgeDocument[],
+  terms: string[]
+): KnowledgeDocument[] {
+  return documents.filter((document) =>
+    matchesAnyTerm(getDocumentFullSearchText(document), terms)
+  );
+}
+
+function pickDocumentChunk(
+  document: KnowledgeDocument,
+  query: string,
+  allChunks: KnowledgeChunk[]
+): RetrievedChunk {
+  const queryTokens = expandTokens(tokenize(query));
+  const documentChunks = allChunks.filter(
+    (chunk) => chunk.source === document.source || chunk.source === document.id
+  );
+  const selectedChunk =
+    documentChunks
+      .map((chunk) => ({
+        chunk,
+        score: scoreChunk(chunk, query, queryTokens, queryTokens),
+      }))
+      .sort((a, b) => b.score - a.score)[0]?.chunk ||
+    ({
+      id: document.id,
+      title: document.title,
+      section: document.sections[0] || "Dokumen",
+      source: document.source,
+      content: document.content || "",
+    } satisfies KnowledgeChunk);
+
+  return {
+    ...selectedChunk,
+    title: document.title || selectedChunk.title,
+    section: selectedChunk.section || document.sections[0] || "Dokumen",
+    source: document.source,
+    score: scoreChunk(selectedChunk, query, queryTokens, queryTokens),
+    excerpt: buildExcerpt(selectedChunk, queryTokens),
+  };
+}
+
+function scoreFileDocumentCandidate(
+  document: KnowledgeDocument,
+  nameTokens: string[],
+  requestedExtensions: string[],
+  retrievedScore: number
+): number {
+  const nameText = getDocumentNameSearchText(document);
+  const fullText = getDocumentFullSearchText(document);
+  let score = retrievedScore;
+
+  if (
+    requestedExtensions.length > 0 &&
+    documentMatchesExtensions(document, requestedExtensions)
+  ) {
+    score += 30;
+  }
+
+  for (const token of nameTokens) {
+    if (matchesAnyTerm(nameText, [token])) {
+      score += 20;
+      continue;
+    }
+
+    if (matchesAnyTerm(fullText, [token])) {
+      score += 4;
+    }
+  }
+
+  if (document.isUploaded) {
+    score += 2;
+  }
+
+  return score;
+}
+
+function getFileRequestDocumentChunks(
+  query: string,
+  retrievedChunks: RetrievedChunk[],
+  limit: number
+): RetrievedChunk[] {
+  const activeSources = new Set(getActiveKnowledgeSources());
   const requestedExtensions = getRequestedFileExtensions(query);
+  const nameTokens = getRequestedFileNameTokens(query);
+  let candidates = getKnowledgeDocuments().filter(
+    (document) =>
+      document.isActive &&
+      (activeSources.has(document.source) || activeSources.has(document.id))
+  );
 
   if (requestedExtensions.length > 0) {
-    const filteredCandidates = candidates.filter((chunk) =>
-      sourceMatchesExtensions(chunk.source, requestedExtensions)
+    candidates = candidates.filter((document) =>
+      documentMatchesExtensions(document, requestedExtensions)
     );
-
-    candidates = filteredCandidates;
   }
 
+  candidates = filterDocumentsByNameRequest(candidates, nameTokens);
+
+  const queryTokens = new Set(tokenize(query));
   const entityFilters: Array<{ active: boolean; terms: string[] }> = [
     {
       active: queryTokens.has("lpj") || queryTokens.has("pertanggungjawaban"),
@@ -1318,13 +1608,11 @@ export function getDocumentFileRequestChunks(
   ];
 
   for (const filter of entityFilters) {
-    if (!filter.active) {
+    if (!filter.active || candidates.length === 0) {
       continue;
     }
 
-    const filteredCandidates = candidates.filter((chunk) =>
-      matchesAnyTerm(getChunkSearchText(chunk), filter.terms)
-    );
+    const filteredCandidates = filterDocumentsByTerms(candidates, filter.terms);
 
     if (filteredCandidates.length > 0) {
       candidates = filteredCandidates;
@@ -1351,30 +1639,51 @@ export function getDocumentFileRequestChunks(
   ];
 
   for (const filter of detailFilters) {
-    if (!filter.active) {
+    if (!filter.active || candidates.length === 0) {
       continue;
     }
 
-    const filteredCandidates = candidates.filter((chunk) =>
-      matchesAnyTerm(getChunkSearchText(chunk), filter.terms)
-    );
+    const filteredCandidates = filterDocumentsByTerms(candidates, filter.terms);
 
     if (filteredCandidates.length > 0) {
       candidates = filteredCandidates;
     }
   }
 
-  const uniqueSources = new Set<string>();
-  return candidates
-    .filter((chunk) => {
-      if (uniqueSources.has(chunk.source)) {
-        return false;
-      }
+  const retrievedScoreBySource = new Map(
+    retrievedChunks.map((chunk) => [chunk.source, chunk.score])
+  );
+  const allChunks = getAllKnowledgeChunksSync();
 
-      uniqueSources.add(chunk.source);
-      return true;
+  return candidates
+    .map((document, index) => {
+      const chunk = pickDocumentChunk(document, query, allChunks);
+
+      return {
+        ...chunk,
+        score:
+          scoreFileDocumentCandidate(
+            document,
+            nameTokens,
+            requestedExtensions,
+            retrievedScoreBySource.get(document.source) || 0
+          ) - index * 0.001,
+      };
     })
+    .sort((a, b) => b.score - a.score)
     .slice(0, limit);
+}
+
+export function getDocumentFileRequestChunks(
+  query: string,
+  chunks: RetrievedChunk[],
+  limit = 4
+): RetrievedChunk[] {
+  if (!isDocumentFileRequest(query)) {
+    return chunks.slice(0, limit);
+  }
+
+  return getFileRequestDocumentChunks(query, chunks, limit);
 }
 
 export function buildDocumentFileRequestAnswer(
@@ -1434,7 +1743,7 @@ export function buildDirectKnowledgeAnswer(
   }
 
   if (isFlowQuery(query)) {
-    const flowAnswer = buildNumberedFlowAnswer(chunks, allChunks);
+    const flowAnswer = buildNumberedFlowAnswer(query, chunks, allChunks);
 
     if (flowAnswer) {
       return flowAnswer;
