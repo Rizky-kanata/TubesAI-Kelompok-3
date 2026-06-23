@@ -1,8 +1,8 @@
 import type { ChatConfig } from "../types/Message";
 
 const chatbotConfig: ChatConfig = {
-  botName: "Student Service Center",
-  tagline: "Layanan SSC, Akademik, Ormawa, dan UKM",
+  botName: "PROSA",
+  tagline: "Proposal dan Surat Administrasi",
   inputPlaceholder: "Tanyakan alur, syarat, link, atau dokumen pendukung...",
   quickPrompts: [
     "FAQ Proposal",
