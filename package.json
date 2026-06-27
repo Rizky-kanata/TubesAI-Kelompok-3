@@ -1,5 +1,5 @@
 {
-  "name": "ochobot",
+  "name": "clauko-ai",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,12 +12,16 @@
     "health:check": "node scripts/healthcheck.cjs",
     "knowledge:extract": "node scripts/extract-knowledge.cjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --import tsx --test scripts/*.test.cjs scripts/*.test.ts"
   },
   "dependencies": {
+    "docx": "^9.7.1",
+    "jspdf": "^4.2.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-router-dom": "^7.17.0"
+    "react-router-dom": "^7.17.0",
+    "write-excel-file": "^4.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -29,6 +33,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
+    "tsx": "^4.22.4",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10"

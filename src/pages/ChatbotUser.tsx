@@ -11,39 +11,39 @@ import "../App.css";
 const faqPrompts = [
   {
     label: "Proposal",
-    question: "Bagaimana cara mengajukan proposal kegiatan?",
+    question: "Bagaimana cara mengajukan proposal pendanaan kegiatan Ormawa/UKM?",
     prompt:
-      "Bagaimana cara mengajukan proposal kegiatan? Jelaskan alur, syarat, template, dan link jika tersedia.",
+      "Bagaimana cara mengajukan proposal pendanaan kegiatan Ormawa/UKM?",
   },
   {
-    label: "LPJ",
-    question: "Apa saja lampiran untuk LPJ kegiatan?",
+    label: "Link",
+    question: "Di mana link pengajuan proposal pendanaan Ormawa/UKM?",
     prompt:
-      "Apa saja lampiran untuk LPJ kegiatan? Jelaskan syarat, alur, dan link jika tersedia.",
+      "Di mana link pengajuan proposal pendanaan Ormawa/UKM?",
   },
   {
     label: "Template",
-    question: "Di mana template proposal dan LPJ?",
+    question: "Di mana saya bisa mendapatkan template proposal kegiatan?",
     prompt:
-      "Di mana template proposal dan LPJ? Tampilkan link template jika tersedia pada dokumen.",
+      "Di mana saya bisa mendapatkan template proposal kegiatan?",
   },
   {
-    label: "TAK",
-    question: "Bagaimana cara mengurus TAK?",
+    label: "RAB",
+    question: "Apa saja yang harus diperhatikan dalam penyusunan RAB?",
     prompt:
-      "Bagaimana cara mengurus TAK berdasarkan dokumen yang tersedia?",
+      "Apa saja yang harus diperhatikan dalam penyusunan RAB?",
   },
   {
-    label: "SSC",
-    question: "Bagaimana alur menghubungi SSC?",
+    label: "LPJ",
+    question: "Apa saja syarat LPJ kegiatan?",
     prompt:
-      "Bagaimana alur menghubungi SSC berdasarkan dokumen yang tersedia?",
+      "Apa saja syarat LPJ kegiatan?",
   },
   {
     label: "Sertifikat",
-    question: "Bagaimana pengajuan sertifikasi kegiatan?",
+    question: "Bagaimana cara mengajukan tanda tangan sertifikat kegiatan?",
     prompt:
-      "Bagaimana alur pengajuan sertifikasi kegiatan dan dokumen apa saja yang dibutuhkan?",
+      "Bagaimana cara mengajukan tanda tangan sertifikat kegiatan?",
   },
 ];
 

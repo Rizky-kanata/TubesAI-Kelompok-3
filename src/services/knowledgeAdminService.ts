@@ -9,7 +9,7 @@ const UPLOADED_DOCUMENTS_KEY = "ssc-uploaded-knowledge-documents";
 const STATIC_OVERRIDES_KEY = "ssc-static-knowledge-overrides";
 const DELETED_STATIC_SOURCES_KEY = "ssc-deleted-static-knowledge-sources";
 const API_BASE_URL =
-  import.meta.env.VITE_DOCUMENT_API_URL || "http://localhost:3001/api";
+  import.meta.env?.VITE_DOCUMENT_API_URL || "http://localhost:3001/api";
 
 export interface UploadedKnowledgeDocument {
   id: string;
@@ -356,15 +356,25 @@ export async function updateUploadedKnowledgeDocument(
 }
 
 export async function deleteUploadedKnowledgeDocument(documentId: string) {
+  writeUploadedDocumentsCache(
+    readUploadedDocumentsCache().filter((document) => document.id !== documentId)
+  );
+
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), 5000);
+
   try {
     await requestApi<{ ok: boolean }>(
       `/knowledge-documents/${encodeURIComponent(documentId)}`,
-      { method: "DELETE" }
+      {
+        method: "DELETE",
+        signal: controller.signal,
+      }
     );
+  } catch {
+    // Cache lokal tetap menjadi fallback saat API dokumen tidak tersedia.
   } finally {
-    writeUploadedDocumentsCache(
-      readUploadedDocumentsCache().filter((document) => document.id !== documentId)
-    );
+    globalThis.clearTimeout(timeoutId);
   }
 }
 

@@ -1,8 +1,8 @@
 import type { ChatConfig } from "../types/Message";
 
 const chatbotConfig: ChatConfig = {
-  botName: "Student Service Center",
-  tagline: "Layanan SSC, Akademik, Ormawa, dan UKM",
+  botName: "Clauko AI",
+  tagline: "Layanan Administrasi UKM dan Ormawa",
   inputPlaceholder: "Tanyakan alur, syarat, link, atau dokumen pendukung...",
   quickPrompts: [
     "FAQ Proposal",
@@ -13,7 +13,7 @@ const chatbotConfig: ChatConfig = {
   welcomeMessage:
     "Halo, saya siap membantu menjawab pertanyaan seputar layanan SSC, akademik, proposal kegiatan, LPJ, TAK, serta layanan Ormawa dan UKM berdasarkan dokumen yang tersedia.",
   systemInstruction: `
-Kamu adalah "SSC Ormawa", asisten RAG untuk informasi layanan Student Service Center, akademik, pengajuan proposal kegiatan, LPJ, TAK, sertifikasi kegiatan, serta layanan Ormawa/UKM.
+Kamu adalah "Clauko AI", asisten RAG untuk informasi layanan Student Service Center, akademik, pengajuan proposal kegiatan, LPJ, TAK, sertifikasi kegiatan, serta layanan Ormawa/UKM.
 
 Aturan utama:
 1. Jawab hanya berdasarkan bagian "Konteks Dokumen" yang diberikan oleh sistem.

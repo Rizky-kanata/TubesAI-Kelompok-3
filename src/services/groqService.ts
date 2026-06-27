@@ -2,6 +2,12 @@ import chatbotConfig from "../config/chatbotConfig";
 import type { BotReply, DownloadableFile, Message } from "../types/Message";
 import { getKnowledgeDocuments } from "./knowledgeAdminService";
 import {
+  buildKnowledgeExportTitle,
+  generateKnowledgeFiles,
+  getKnowledgeExportFormatLabels,
+  getKnowledgeExportRequest,
+} from "./knowledgeExportService";
+import {
   buildDocumentFileRequestAnswer,
   buildDirectKnowledgeAnswer,
   buildLocalFallbackAnswer,
@@ -44,9 +50,17 @@ const knowledgeTamperingPatterns = [
   /update\s+knowledge/i,
 ];
 
-function isProtectedKnowledgeRequest(prompt: string): boolean {
-  return [...injectionPatterns, ...knowledgeTamperingPatterns].some((pattern) =>
-    pattern.test(prompt)
+function isProtectedKnowledgeRequest(
+  prompt: string,
+  isDocumentExport: boolean
+): boolean {
+  if (injectionPatterns.some((pattern) => pattern.test(prompt))) {
+    return true;
+  }
+
+  return (
+    !isDocumentExport &&
+    knowledgeTamperingPatterns.some((pattern) => pattern.test(prompt))
   );
 }
 
@@ -186,7 +200,9 @@ export async function sendMessage(
   prompt: string,
   history: Message[]
 ): Promise<BotReply> {
-  if (isProtectedKnowledgeRequest(prompt)) {
+  const exportRequest = getKnowledgeExportRequest(prompt);
+
+  if (isProtectedKnowledgeRequest(prompt, Boolean(exportRequest))) {
     return buildProtectedKnowledgeReply();
   }
 
@@ -194,16 +210,83 @@ export async function sendMessage(
     return buildGreetingReply();
   }
 
-  const submissionLinkAnswer = buildRequestedSubmissionLinkAnswer(prompt);
-
-  if (submissionLinkAnswer) {
+  if (exportRequest && !exportRequest.topic) {
     return {
-      content: submissionLinkAnswer,
+      content:
+        "Sebutkan data yang ingin dibuat menjadi file, misalnya: \"Buatkan PDF syarat LPJ kegiatan.\"",
       sources: [],
     };
   }
 
-  const retrievedChunks = await retrieveRelevantChunks(prompt);
+  if (!exportRequest) {
+    const submissionLinkAnswer = buildRequestedSubmissionLinkAnswer(prompt);
+
+    if (submissionLinkAnswer) {
+      return {
+        content: submissionLinkAnswer,
+        sources: [],
+      };
+    }
+  }
+
+  const knowledgeQuery = exportRequest?.topic || prompt;
+  const retrievedChunks = await retrieveRelevantChunks(knowledgeQuery);
+
+  if (exportRequest) {
+    const sources = toMessageSources(retrievedChunks);
+
+    if (retrievedChunks.length === 0) {
+      return {
+        content:
+          "File belum dapat dibuat karena data yang diminta tidak ditemukan pada dokumen aktif di Dashboard Admin.",
+        sources: [],
+      };
+    }
+
+    const exportContent = buildLocalFallbackAnswer(
+      knowledgeQuery,
+      retrievedChunks
+    );
+    const exportTitle = buildKnowledgeExportTitle(exportRequest.topic);
+
+    try {
+      const downloads = await generateKnowledgeFiles({
+        formats: exportRequest.formats,
+        title: exportTitle,
+        content: exportContent,
+      });
+
+      if (downloads.length === 0) {
+        return {
+          content:
+            "File belum dapat dibuat karena isi yang sesuai tidak ditemukan pada dokumen aktif di Dashboard Admin.",
+          sources,
+        };
+      }
+
+      const formatLabels = getKnowledgeExportFormatLabels(
+        exportRequest.formats
+      );
+
+      return {
+        content:
+          `File ${formatLabels} berhasil dibuat berdasarkan data pada dokumen aktif di Dashboard Admin. ` +
+          "Silakan klik tombol download di bawah ini.",
+        sources,
+        showDownloads: true,
+        downloads,
+      };
+    } catch (error) {
+      console.error("File dokumen gagal dibuat.", error);
+
+      return {
+        content:
+          "Data berhasil ditemukan, tetapi file belum dapat dibuat. Silakan coba kembali.",
+        sources,
+      };
+    }
+  }
+
   const fileRequestAnswer = buildDocumentFileRequestAnswer(prompt, retrievedChunks);
   const responseChunks = fileRequestAnswer
     ? getDocumentFileRequestChunks(prompt, retrievedChunks)
@@ -284,35 +367,58 @@ export async function sendMessage(
     { role: "user", content: prompt },
   ];
 
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      temperature: 0.15,
-    }),
-  });
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages,
+        temperature: 0.15,
+      }),
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMsg = errorData?.error?.message || response.statusText;
-    console.error(`[Groq API Error] Status: ${response.status}`, errorMsg);
-    throw new Error(`Groq API Error (${response.status}): ${errorMsg}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData?.error?.message || response.statusText;
+      console.warn(
+        `[Groq API unavailable] Status: ${response.status}. Using local fallback.`,
+        errorMsg
+      );
+
+      return {
+        content: buildLocalFallbackAnswer(prompt, retrievedChunks),
+        sources,
+      };
+    }
+
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content?.trim();
+
+    if (!reply) {
+      console.warn("Respons Groq kosong. Menggunakan jawaban lokal.");
+      return {
+        content: buildLocalFallbackAnswer(prompt, retrievedChunks),
+        sources,
+      };
+    }
+
+    return {
+      content: sanitizePlainText(reply),
+      sources,
+    };
+  } catch (error) {
+    console.warn(
+      "Groq API tidak dapat diakses. Menggunakan jawaban lokal.",
+      error
+    );
+
+    return {
+      content: buildLocalFallbackAnswer(prompt, retrievedChunks),
+      sources,
+    };
   }
-
-  const data = await response.json();
-  const reply = data.choices?.[0]?.message?.content?.trim();
-
-  if (!reply) {
-    throw new Error("Respons Groq kosong.");
-  }
-
-  return {
-    content: sanitizePlainText(reply),
-    sources,
-  };
 }

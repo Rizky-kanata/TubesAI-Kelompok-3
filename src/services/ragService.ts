@@ -1207,6 +1207,23 @@ function scoreChunk(
     }
   }
 
+  const faqQuestion = extractFaqQuestion(chunk.content);
+
+  if (faqQuestion && baseTokens.length > 0) {
+    const faqTokens = tokenize(faqQuestion);
+    const matchedFaqTokens = baseTokens.filter((token) =>
+      faqTokens.includes(token)
+    );
+    const queryCoverage = matchedFaqTokens.length / baseTokens.length;
+    const questionCoverage =
+      matchedFaqTokens.length / Math.max(faqTokens.length, 1);
+
+    score +=
+      matchedFaqTokens.length * 4 +
+      queryCoverage * 16 +
+      questionCoverage * 12;
+  }
+
   return score;
 }
 
@@ -1753,6 +1770,114 @@ export function buildDirectKnowledgeAnswer(
   return null;
 }
 
+function getDocumentAnswerLines(chunk: KnowledgeChunk): string[] {
+  const content = extractFaqAnswer(chunk.content) || chunk.content;
+  const normalizedTitle = normalizeText(chunk.title);
+  const normalizedSection = normalizeText(chunk.section);
+
+  return content
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => {
+      const normalizedLine = normalizeText(line);
+
+      return (
+        normalizedLine !== normalizedTitle &&
+        normalizedLine !== normalizedSection &&
+        !/^question\s*:/i.test(line) &&
+        !/^answer\s*:/i.test(line) &&
+        !/^={5,}$/.test(line)
+      );
+    });
+}
+
+function getUniqueAnswerLines(lines: string[]): string[] {
+  const seenLines = new Set<string>();
+
+  return lines.filter((line) => {
+    const normalizedLine = normalizeText(line);
+
+    if (!normalizedLine || seenLines.has(normalizedLine)) {
+      return false;
+    }
+
+    seenLines.add(normalizedLine);
+    return true;
+  });
+}
+
+function limitAnswerLines(
+  lines: string[],
+  maxLines = 20,
+  maxCharacters = 4000
+): string[] {
+  const limitedLines: string[] = [];
+  let characterCount = 0;
+
+  for (const line of lines) {
+    if (
+      limitedLines.length >= maxLines ||
+      characterCount + line.length > maxCharacters
+    ) {
+      break;
+    }
+
+    limitedLines.push(line);
+    characterCount += line.length;
+  }
+
+  return limitedLines;
+}
+
+function buildGroundedDocumentAnswer(
+  query: string,
+  chunks: RetrievedChunk[],
+  allChunks: KnowledgeChunk[]
+): string | null {
+  const topChunk = chunks[0];
+
+  if (!topChunk) {
+    return null;
+  }
+
+  const isRequirementQuery =
+    /\b(syarat|persyaratan|lampiran|kelengkapan)\b/i.test(query);
+  const topChunkHeading = normalizeText(
+    `${topChunk.title} ${topChunk.section}`
+  );
+  const queryTokens = correctTokensWithDocumentVocabulary(
+    tokenize(query),
+    chunks
+  );
+  const headingMatchesQuery = queryTokens.some((token) =>
+    containsExactTerm(topChunkHeading, token)
+  );
+  const sourceChunks =
+    isRequirementQuery && headingMatchesQuery
+      ? allChunks.filter((chunk) => chunk.source === topChunk.source)
+      : chunks.slice(0, 3);
+  const documentLines = sourceChunks.flatMap(getDocumentAnswerLines);
+  const matchingLines = documentLines.filter((line) =>
+    queryTokens.some((token) => containsExactTerm(line, token))
+  );
+  const selectedLines =
+    matchingLines.length > 0 && !isRequirementQuery
+      ? matchingLines
+      : documentLines;
+  const answerLines = limitAnswerLines(getUniqueAnswerLines(selectedLines));
+
+  if (answerLines.length === 0) {
+    return null;
+  }
+
+  const formattedAnswer = answerLines
+    .map((line, index) => `${index + 1}. ${line}`)
+    .join("\n");
+
+  return `Berdasarkan dokumen yang aktif di Dashboard Admin:\n${formattedAnswer}`;
+}
+
 export function buildLocalFallbackAnswer(
   query: string,
   chunks: RetrievedChunk[],
@@ -1786,10 +1911,14 @@ export function buildLocalFallbackAnswer(
     return directKnowledgeAnswer;
   }
 
-  const facts = chunks
-    .slice(0, 3)
-    .map((chunk, index) => `${index + 1}. ${chunk.excerpt}`)
-    .join("\n");
+  const groundedDocumentAnswer = buildGroundedDocumentAnswer(
+    query,
+    chunks,
+    allChunks
+  );
 
-  return `Berikut informasi yang saya temukan dari dokumen:\n${facts}`;
+  return (
+    groundedDocumentAnswer ||
+    "Saya belum menemukan jawaban yang sesuai pada dokumen aktif di Dashboard Admin."
+  );
 }

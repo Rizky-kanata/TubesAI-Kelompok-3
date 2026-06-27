@@ -241,21 +241,34 @@ function AdminDashboard() {
       return;
     }
 
+    const previousDocuments = documents;
+    setDocuments((currentDocuments) =>
+      currentDocuments.filter((item) => item.id !== document.id)
+    );
     setIsSaving(true);
 
-    if (document.isUploaded) {
-      await deleteUploadedKnowledgeDocument(document.id);
-    } else {
-      deleteStaticKnowledgeDocument(document.source);
-    }
+    try {
+      if (document.isUploaded) {
+        await deleteUploadedKnowledgeDocument(document.id);
+      } else {
+        deleteStaticKnowledgeDocument(document.source);
+      }
 
-    if (viewingId === document.id) {
-      setViewingId(null);
-    }
+      if (viewingId === document.id) {
+        setViewingId(null);
+      }
 
-    setNotice("Dokumen berhasil dihapus.");
-    setIsSaving(false);
-    await refreshDocuments();
+      setNotice("Dokumen berhasil dihapus.");
+    } catch (error) {
+      setDocuments(previousDocuments);
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Dokumen gagal dihapus. Silakan coba kembali."
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

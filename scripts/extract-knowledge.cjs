@@ -86,7 +86,7 @@ function normalizeExtractedText(text) {
     .split(/\n+/)
     .map((line) => line.replace(/[ \t]+/g, " ").trim())
     .filter(Boolean)
-    .filter((line, index, lines) => lines.indexOf(line) === index)
+    .filter((line, index, lines) => index === 0 || line !== lines[index - 1])
     .join("\n");
 }
 
@@ -816,6 +816,42 @@ function splitTextSections(text, fallbackSection) {
   return chunks;
 }
 
+function splitFaqSections(text) {
+  const questionPattern = /^Question\s*:\s*(.+)$/gim;
+  const matches = [...text.matchAll(questionPattern)];
+
+  if (matches.length === 0) {
+    return null;
+  }
+
+  const sections = matches
+    .map((match, index) => {
+      const start = match.index ?? 0;
+      const end = matches[index + 1]?.index ?? text.length;
+      const question = match[1].trim();
+      const content = text
+        .slice(start, end)
+        .replace(/\n={5,}\s*\n[^\n]+\n={5,}\s*$/g, "")
+        .trim();
+
+      if (!/^Answer\s*:/im.test(content)) {
+        return null;
+      }
+
+      return {
+        section: question,
+        content,
+      };
+    })
+    .filter(Boolean);
+
+  return sections.length > 0 ? sections : null;
+}
+
+function splitDocumentSections(text, fallbackSection) {
+  return splitFaqSections(text) || splitTextSections(text, fallbackSection);
+}
+
 function getLocalDocuments() {
   if (!fs.existsSync(documentsPath)) {
     return [];
@@ -855,18 +891,21 @@ function readDocumentSections(document) {
   }
 
   if (document.type === "docx") {
-    return splitTextSections(readDocxText(document.path), document.title);
+    return splitDocumentSections(readDocxText(document.path), document.title);
   }
 
   if (document.type === "pdf") {
-    return splitTextSections(readPdfText(document.path), document.title);
+    return splitDocumentSections(readPdfText(document.path), document.title);
   }
 
   if (document.type === "xlsx" || document.type === "xlsm") {
-    return splitTextSections(readXlsxText(document.path), document.title);
+    return splitDocumentSections(readXlsxText(document.path), document.title);
   }
 
-  return splitTextSections(normalizeExtractedText(fs.readFileSync(document.path, "utf8")), document.title);
+  return splitDocumentSections(
+    normalizeExtractedText(fs.readFileSync(document.path, "utf8")),
+    document.title
+  );
 }
 
 function toTsString(value) {
@@ -960,4 +999,12 @@ function main() {
   console.log(`Generated ${outputPath} with ${knowledgeChunks.length} chunks from ${documents.length} documents.`);
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  normalizeExtractedText,
+  splitDocumentSections,
+  splitFaqSections,
+};
