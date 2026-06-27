@@ -27,7 +27,7 @@ const Register = () => {
           <img src="/logossc.png" alt="Logo" style={styles.logo}/>
         </div>
 
-        <h2 style={styles.title}>Register</h2>
+        <h2 style={styles.title}>Register Clauko AI</h2>
         <p style={styles.subtitle}>Daftar untuk menggunakan chatbot Layanan Administrasi UKM dan Ormawa</p>
 
         {message && (

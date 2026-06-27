@@ -28,7 +28,7 @@ const Login = () => {
           <img src="/logossc.png" alt="Logo" style={styles.logo}/>
         </div>
 
-        <h2 style={styles.title}>Login</h2>
+        <h2 style={styles.title}>Login Clauko AI</h2>
 
         <p style={styles.subtitle}>Chatbot Layanan Administrasi UKM dan Ormawa</p>
 
