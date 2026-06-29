@@ -1,5 +1,6 @@
 import {
   knowledgeChunks,
+  knowledgeDatasetRevision,
   knowledgeSourceFiles,
   type KnowledgeChunk,
 } from "../data/knowledgeBase";
@@ -61,6 +62,11 @@ interface StaticKnowledgeOverride {
   section: string;
   content: string;
   updatedAt: string;
+}
+
+interface DeletedStaticSourcesState {
+  datasetRevision: string;
+  sources: string[];
 }
 
 function canUseStorage(): boolean {
@@ -135,14 +141,42 @@ function writeStaticOverrides(overrides: Map<string, StaticKnowledgeOverride>) {
 }
 
 function readDeletedStaticSources(): Set<string> {
-  const sources = readJsonFromStorage<unknown[]>(DELETED_STATIC_SOURCES_KEY, []);
+  const storedState = readJsonFromStorage<unknown>(
+    DELETED_STATIC_SOURCES_KEY,
+    null
+  );
+
+  if (
+    !storedState ||
+    typeof storedState !== "object" ||
+    Array.isArray(storedState)
+  ) {
+    writeDeletedStaticSources(new Set());
+    return new Set();
+  }
+
+  const state = storedState as Partial<DeletedStaticSourcesState>;
+
+  if (
+    state.datasetRevision !== knowledgeDatasetRevision ||
+    !Array.isArray(state.sources)
+  ) {
+    writeDeletedStaticSources(new Set());
+    return new Set();
+  }
+
   return new Set(
-    sources.filter((source): source is string => typeof source === "string")
+    state.sources.filter(
+      (source): source is string => typeof source === "string"
+    )
   );
 }
 
 function writeDeletedStaticSources(sources: Set<string>) {
-  writeJsonToStorage(DELETED_STATIC_SOURCES_KEY, [...sources]);
+  writeJsonToStorage<DeletedStaticSourcesState>(DELETED_STATIC_SOURCES_KEY, {
+    datasetRevision: knowledgeDatasetRevision,
+    sources: [...sources],
+  });
 }
 
 function normalizeDocument(value: unknown): UploadedKnowledgeDocument | null {
@@ -468,7 +502,7 @@ export function getActiveKnowledgeSources(): string[] {
     ]),
   ];
 
-  return activeSources.length > 0 ? activeSources : allSources;
+  return activeSources;
 }
 
 export function setKnowledgeSourceActive(source: string, isActive: boolean) {
@@ -477,7 +511,7 @@ export function setKnowledgeSourceActive(source: string, isActive: boolean) {
 
   if (isActive) {
     activeSources.add(source);
-  } else if (activeSources.size > 1) {
+  } else {
     activeSources.delete(source);
   }
 

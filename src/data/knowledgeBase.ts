@@ -15,6 +15,55 @@ export interface KnowledgeSourceFile {
 
 export const knowledgeChunks: KnowledgeChunk[] = [
   {
+    id: "alur-pengajuan-lpj-kegiatan-1",
+    title: "Alur Pengajuan LPJ Kegiatan",
+    section: "Alur Pengajuan Laporan Pertanggungjawaban (LPJ) Kegiatan",
+    source: "Alur Pengajuan LPJ Kegiatan.docx",
+    content: "Alur Pengajuan Laporan Pertanggungjawaban (LPJ) Kegiatan\nOrmawa/UKM menyusun laporan pertanggungjawaban kegiatan sesuai template.\nMengumpulkan seluruh bukti transaksi dan evidence kegiatan.\nMenyusun hard copy LPJ lengkap dengan lembar pengesahan.\nMengunggah soft copy LPJ beserta seluruh dokumen pendukung pada link LPJ.\nBagian Kemahasiswaan melakukan pengecekan dan verifikasi dokumen LPJ.\nJika terdapat kekurangan dokumen, LPJ dikembalikan untuk diperbaiki.\nJika LPJ telah sesuai, proses pertanggungjawaban kegiatan dinyatakan selesai.",
+  },
+  {
+    id: "alur-pengajuan-proposal-dana-kegiatan-1",
+    title: "Alur Pengajuan Proposal Dana Kegiatan",
+    section: "Alur Pengajuan Proposal Pengajuan Dana Kegiatan",
+    source: "Alur Pengajuan Proposal Dana Kegiatan.docx",
+    content: "Alur Pengajuan Proposal Pengajuan Dana Kegiatan\nOrmawa/UKM mengakses link pengajuan proposal pendanaan.\nOrmawa/UKM mengunggah proposal pendanaan kegiatan secara online.\nBagian Kemahasiswaan melakukan proses review dan pemberian feedback terhadap proposal.\nJika proposal belum sesuai, proposal dikembalikan kepada Ormawa/UKM untuk diperbaiki.\nJika proposal sudah sesuai, Bagian Kemahasiswaan mengeluarkan lembar evaluasi sebagai bukti persetujuan pencairan dana.\nOrmawa/UKM membuat lembar pengesahan yang ditandatangani pejabat berwenang untuk melengkapi proposal yang telah disetujui.\nProses pengajuan proposal selesai dan dapat dilanjutkan ke tahap pencairan dana.",
+  },
+  {
+    id: "alur-pengajuan-sertifikasi-kegiatan-ormawa-ukm-1",
+    title: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    section: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    source: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM.pdf",
+    content: "https://forms.office.com/pages/responsepage.aspx?id=D_6vkKPCCEG7mGzrTpTvFQirFfd-c6lInVc5GFu5s_RUMk9GREVMVUs5TVpWVEpHSEQwQVlMNE1KNS4u&route=shorturl\nhttp://www.microsoft.com/typography/ctfontshttp://lucasfonts.comMicrosoft\nhttp://en.wikipedia.org/wiki/MIT_License\nhttp://www.microsoft.com/typography/fonts/default.aspx M i c r o s o f t\nhttp://crl.microsoft.com/pki/crl/products/MicrosoftTimeStampPCA.crl0X\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0001\u0001\u0004L0J0H\u0006\b+\u0006\u0001\u0005\u0005\u00070\u0002\nhttp://www.microsoft.com/pki/certs/MicrosoftTimeStampPCA.crt0\u0013\u0006\u0003U\u001d%\u0004\nhttp://crl.microsoft.com/pki/crl/products/microsoftrootcert.crl0T\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0001\u0001\u0004H0F0D\u0006\b+\u0006\u0001\u0005\u0005\u00070\u00028http://www.microsoft.com/pki/certs/MicrosoftRootCert.crt0\u0013\u0006\u0003U\u001d%\u0004\nhttp://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0001\u0001\u0004U0S0Q\u0006\b+\u0006\u0001\u0005\u0005\u00070\u0002Ehttp://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0\nhttp://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0001\u0001\u0004R0P0N\u0006\b+\u0006\u0001\u0005\u0005\u00070\u0002Bhttp://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0\u0006\u0003U\u001d\nhttp://www.microsoft.com/pkiops/docs/primarycps.htm0@\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0002\u000204\u001e2\nhttp://www.microsoft.com/Typography/0",
+  },
+  {
+    id: "alur-pengajuan-sertifikasi-kegiatan-ormawa-ukm-2",
+    title: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    section: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    source: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM.pdf",
+    content: "http://www.microsoft.com/typography/ctfontshttp://www.fonts.comYou\nhttp://www.microsoft.com/typography/fonts/default.aspx \u0003 ÿ t \u0001 \u0002 \b \u000fÿÿ \u000f \u0002 \u0006 \u0001\nhttp://www.microsoft.com/typography/ctfontshttp://www.fonts.comYou\nhttp://www.microsoft.com/typography/fonts/default.aspx \u0003 ÿ  \u0001 \u0003\nhttp://crl.microsoft.com/pki/crl/products/MicrosoftTimeStampPCA.crl0X\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0001\u0001\u0004L0J0H\u0006\b+\u0006\u0001\u0005\u0005\u00070\u0002\nhttp://www.microsoft.com/pki/certs/MicrosoftTimeStampPCA.crt0\u0013\u0006\u0003U\u001d%\u0004\nhttp://crl.microsoft.com/pki/crl/products/microsoftrootcert.crl0T\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0001\u0001\u0004H0F0D\u0006\b+\u0006\u0001\u0005\u0005\u00070\u00028http://www.microsoft.com/pki/certs/MicrosoftRootCert.crt0\u0013\u0006\u0003U\u001d%\u0004\nhttp://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0001\u0001\u0004U0S0Q\u0006\b+\u0006\u0001\u0005\u0005\u00070\u0002Ehttp://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0\nhttp://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0001\u0001\u0004R0P0N\u0006\b+\u0006\u0001\u0005\u0005\u00070\u0002Bhttp://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0\u0006\u0003U\u001d\nhttp://www.microsoft.com/pkiops/docs/primarycps.htm0@\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0002\u000204\u001e2\nhttp://www.microsoft.com/Typography/0\nhttp://www.monotype.com/html/mtname/ms_symbol.htmlhttp://www.monotype.com/html/mtname/ms_welcome.htmlNOTIFICATION",
+  },
+  {
+    id: "alur-pengajuan-sertifikasi-kegiatan-ormawa-ukm-3",
+    title: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    section: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    source: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM.pdf",
+    content: "http://www.monotype.com/html/type/license.html N o r m a l n y o b y\u0001\nhttp://ocsp.verisign.com0\u0012\u0006\u0003U\u001d\u0013\u0001\u0001ÿ\u0004\b0\u0006\u0001\u0001ÿ\u0002\u0001 0A\u0006\u0003U\u001d\u001f\u0004:0806\nhttp://crl.verisign.com/ThawteTimestampingCA.crl0\u0013\u0006\u0003U\u001d%\u0004\nhttp://ocsp.verisign.com0\nhttp://crl.verisign.com/tss-ca.crl0\u0016\u0006\u0003U\u001d%\u0001\u0001ÿ\u0004\nhttp://crl.microsoft.com/pki/crl/products/CodeSignPCA2.crl0O\u0006\b+\u0006\u0001\u0005\u0005\u0007\u0001\u0001\u0004C0A0?\u0006\b+\u0006\u0001\u0005\u0005\u00070\u00023http://www.microsoft.com/pki/certs/CodeSignPCA2.crt0\nhttp://www.microsoft.com/typography\nAl ur Pe ng a j ua n S e r t i f i ka si Keg i a ta n O r ma w a /U K M\n1.\nPe m o h o n m e m b u k a fo rm p e n g a j u a n n o m o r d a n t a n d a t a n g a n se rt i fi ka t k e g i a t a n O rm a w a / U K M\nh t t p s : / / fo rm s . o ffi c e . c o m / p a g e s / re s p o n s e p a g e . a s p x ? i d = D _6 v kKP CC E G7 m GzrT p T v F Qi rF fd\n-\nc 6 l In V c 5 GF u 5 s _\nR U M k9 GR E V M V U s 5 T V p W V E p H S E Q w QV l M N E 1 KN S 4 u & ro u t e = s h o rt u rl\n2.\nPe m o h o n m e n g i s i d a t a d i ri m e l i p u t i n a m a p e m o h o n , n o m o r W h a t s A p p , d a n n a m a O rm a w a / U KM .\n3.\nPe m o h o n m e n g i s i d a t a k e g i a t a n se p e rt i n a m a k e g i a t a n , t a n g g a l m u l a i d a n se l e s a i k e g i a t a n .",
+  },
+  {
+    id: "alur-pengajuan-sertifikasi-kegiatan-ormawa-ukm-4",
+    title: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    section: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    source: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM.pdf",
+    content: "4.\nPe m o h o n m e n g i s i j u d u l se rt\ni fi ka t d a n m e m i l i h k a t e g o ri se rt i fi ka t se p e rt i p a n i t i a , n a ra s u m b e r, p e s e rt a ,\np e m e n a n g , a t a u k a t e g o ri l a i n n y a .\n5.\nPe m o h o n m e n g i s i t a n g g a l p e n g a j u a n se rt i fi ka s i .\n6.\nPe m o h o n m e n g u n g g a h l a m p i ra n d a ft a r n a ra s u m b e r/ p a n i t i a / p e s e rt a l e n g ka p d e n g a n t a n d a t a n g a n p e m b i n a\nd\na n k e p a l a b a g i a n k e m a h a s i s w a a n .\n7.\nPe m o h o n m e n g i n p u t l i n k d o ku m e n t a s i k e g i a t a n b e r u p a fo t o d a n v i d e o k e g i a t a n .\n8.\nPe m o h o n m e n g u n g g a h d e s a i n se r t i fi ka t k e g i a t a n .\n9.\nPe m o h o n m e l a k u ka n su b m i t fo rm p e n g a j u a n se rt i fi ka s i .\n10.\nBa g i a n Ke m a h a s i s w a a n m e n e ri m a d a n m e m e ri ksa k e l e\nn g ka p a n d o ku m e n p e n g a j u a n .\n11.\nJika d o ku m e n b e l u m l e n g ka p a t a u b e l u m se s u a i , p e n g a j u a n d i ke m b a l i ka n k e p a d a p e m o h o n u n t u k d i p e rb a i ki.",
+  },
+  {
+    id: "alur-pengajuan-sertifikasi-kegiatan-ormawa-ukm-5",
+    title: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    section: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM",
+    source: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM.pdf",
+    content: "12.\nJika d o ku m e n l e n g ka p d a n se s u a i , B a g i a n Ke m a h a s i s w a a n m e l a ku k a n v e ri fi ka s i d a t a k e g i a t a n d a n se r t i f i ka t .\n13.\nN o m o r d a n t a n d a t a n g a n\ns e r t i fi ka t d i p ro s e s o l e h p i h a k ke m a h a s i s w a a n .\n14.\nS e rt i fi ka t se l e s a i d i v e ri fi ka s i d a n s i a p d i g u n a ka n .\n15.\nPr o s e s p e n g a j u a n se rt i fi ka s i k e g i a t a n se l e s a i .\nC a t a t a n :\nx\nGu n a ka n t e m p l a t e se rt i fi ka t y a n g t e l a h d i s e d i a ka n .\nx\nPa s t i ka n se l u ru h d o ku m e n d a p a t d i a kse s ( o p e n a c c e\ns s ) .\nx\nD o ku m e n p e n d u ku n g h a ru s l e n g ka p d a n se s u a i k e t e n t u a n SS C.",
+  },
+  {
     id: "faq-ssc-revisi-1",
     title: "FAQ SSC   Revisi",
     section: "Apa saja syarat LPJ kegiatan?",
@@ -357,16 +406,179 @@ export const knowledgeChunks: KnowledgeChunk[] = [
     source: "FAQ SSC - Revisi.txt",
     content: "Question: Bagaimana cara menghubungi SSC?\nAnswer:\nSSC dapat dihubungi melalui WhatsApp dan Instagram berikut.\nWhatsApp:\nhttps://api.whatsapp.com/send?phone=6281132212000\nInstagram:\nhttps://www.instagram.com/kemahasiswaan.telkomunivsby",
   },
+  {
+    id: "informasi-umum-ssc-telkom-university-surabaya-1",
+    title: "Informasi Umum SSC Telkom University Surabaya",
+    section: "Informasi Umum SSC Telkom University Surabaya",
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    content: "INFORMASI UMUM STUDENT SERVICE CENTER (SSC)\nTELKOM UNIVERSITY SURABAYA\nDokumen ini berisi informasi umum mengenai layanan Student Service Center (SSC) Telkom University Surabaya, khususnya terkait pengajuan proposal kegiatan, laporan pertanggungjawaban (LPJ), sertifikat kegiatan, Transkrip Aktivitas Kemahasiswaan (TAK), serta layanan administrasi kemahasiswaan.\n==================================================\nA. PENGAJUAN PROPOSAL KEGIATAN\n==================================================\nPengajuan proposal kegiatan Ormawa/UKM dilakukan dengan menggunakan template proposal resmi yang telah disediakan oleh Bagian Kemahasiswaan. Proposal harus disusun sesuai format, dilengkapi seluruh dokumen yang dipersyaratkan, dan diajukan dalam bentuk soft copy melalui link pengajuan proposal. Selain itu, hard copy proposal tetap wajib dikumpulkan dengan lembar pengesahan yang telah ditandatangani secara basah sampai dengan Pembina Ormawa.",
+  },
+  {
+    id: "informasi-umum-ssc-telkom-university-surabaya-2",
+    title: "Informasi Umum SSC Telkom University Surabaya",
+    section: "Proposal pendanaan Ormawa/UKM dapat diajukan melalui link berikut:",
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    content: "Proposal pendanaan Ormawa/UKM dapat diajukan melalui link berikut:\nLink singkat:\nhttps://tel-u.ac.id/pengajuanpendanaanormawaukm\nLink formulir:\nhttps://forms.office.com/Pages/ResponsePage.aspx?id=D_6vkKPCCEG7mGzrTpTvFQirFfd-c6lInVc5GFu5s_RUM0dZV0RCVTRIN0xNTThOUDhWUDBCSTVIQi4u",
+  },
+  {
+    id: "informasi-umum-ssc-telkom-university-surabaya-3",
+    title: "Informasi Umum SSC Telkom University Surabaya",
+    section: "Template proposal kegiatan dapat diakses melalui link berikut:",
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    content: "Template proposal kegiatan dapat diakses melalui link berikut:\nhttps://docs.google.com/document/d/1nfZgOs4uFFmqHcmYQ4Cib5jXc4iRYVLU/edit?usp=sharing&ouid=113853296851132913141&rtpof=true&sd=true\nProposal wajib menggunakan template resmi dari Bagian Kemahasiswaan. Soft copy proposal yang diajukan secara online tidak memerlukan lembar pengesahan, tetapi hard copy proposal wajib dilengkapi lembar pengesahan. Proposal harus diajukan sesuai jadwal yang diumumkan melalui grup WhatsApp resmi Kemahasiswaan.\nSetelah proposal dikumpulkan, Bagian Kemahasiswaan akan melakukan pemeriksaan. Apabila proposal belum sesuai template atau belum memenuhi ketentuan, proposal dapat dikembalikan untuk diperbaiki. Ormawa/UKM wajib memperbaiki proposal sesuai umpan balik yang diberikan, kemudian mengajukannya kembali. Proposal yang tidak sesuai ketentuan dapat menyebabkan proses pencairan dana tertunda atau tidak diproses.\nOrmawa/UKM juga wajib melakukan presentasi proposal sesuai jadwal yang telah ditentukan oleh Bagian Kemahasiswaan. Setelah proposal disetujui, Bagian Kemahasiswaan akan mengeluarkan lembar evaluasi sebagai bukti persetujuan pencairan dana.",
+  },
+  {
+    id: "informasi-umum-ssc-telkom-university-surabaya-4",
+    title: "Informasi Umum SSC Telkom University Surabaya",
+    section: "Template proposal kegiatan dapat diakses melalui link berikut:",
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    content: "Pengajuan konsumsi diperbolehkan khusus untuk panitia kegiatan dan harus didukung oleh dokumen yang dipersyaratkan. Rencana Anggaran Biaya atau RAB harus dibuat secara jelas, terperinci, dan sesuai dengan ketentuan tarif yang berlaku. Seluruh dokumen transaksi harus lengkap, sah, dan sesuai ketentuan. Jika dokumen transaksi tidak lengkap atau tidak sesuai, proses pencairan dana tidak dapat diproses sampai dokumen diperbaiki.\n==================================================\nB. LAPORAN PERTANGGUNGJAWABAN (LPJ)\n==================================================\nLPJ atau Laporan Pertanggungjawaban merupakan laporan pelaksanaan kegiatan dan penggunaan dana yang disusun setelah kegiatan selesai dilaksanakan. LPJ harus menggunakan template resmi, memuat isi yang sesuai dengan kegiatan yang telah dilaksanakan, melampirkan lembar pengesahan, serta melampirkan sertifikat kegiatan yang telah ditandatangani oleh Direktur atau pemangku kepentingan terkait.\nProses pengajuan LPJ dilakukan dengan mengunduh template LPJ, mengisi laporan berdasarkan kegiatan yang telah dilaksanakan, melengkapi bukti transaksi, nota atau kuitansi, presensi, dokumentasi kegiatan, sertifikat kegiatan, dan dokumen pendukung lainnya. Dokumen LPJ harus disusun sesuai template dan urutan RAB, dilengkapi lembar pengesahan, dijilid dalam bentuk hard copy, serta diunggah dalam bentuk soft copy melalui link pengumpulan LPJ.",
+  },
+  {
+    id: "informasi-umum-ssc-telkom-university-surabaya-5",
+    title: "Informasi Umum SSC Telkom University Surabaya",
+    section: "Template LPJ kegiatan dapat diakses melalui link berikut:",
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    content: "Template LPJ kegiatan dapat diakses melalui link berikut:\nhttps://docs.google.com/document/d/1CvWH7LcB38saHRu1hyRDS_jZdv5ZR2Lm/edit?usp=drive_link&ouid=113853296851132913141&rtpof=true&sd=true\nSoft copy LPJ kegiatan dapat dikumpulkan melalui link berikut:\nhttps://forms.office.com/Pages/ResponsePage.aspx?id=D_6vkKPCCEG7mGzrTpTvFQirFfd-c6lInVc5GFu5s_RUQ05GSE5OQlRHWlNNVEI2S1dNMlBQWldUNC4u\nBukti transaksi yang dilampirkan dalam LPJ meliputi nota asli atau kuitansi asli. Nota harus memiliki kop atau stempel toko. Jika nota tidak memiliki kop atau stempel, maka wajib melampirkan foto toko beserta alamat lengkapnya. Jika pembelian dilakukan melalui marketplace, maka wajib melampirkan bukti transaksi atau nota dalam format PDF.\nBukti pelaksanaan kegiatan yang perlu dilampirkan meliputi presensi panitia dan peserta, khususnya jika terdapat pengajuan konsumsi, serta foto kegiatan sebagai bukti pelaksanaan. Maksimal empat foto dicantumkan dalam satu lembar lampiran. Jika terdapat pengeluaran untuk sewa barang atau tempat, maka foto barang atau tempat sewa wajib dilampirkan.\nDokumen pendukung khusus juga perlu dilampirkan sesuai kebutuhan. Jika terdapat pembayaran honorarium narasumber, wajib melampirkan CV narasumber. Jika terdapat hadiah untuk pemenang, wajib melampirkan daftar penerima hadiah dalam bentuk tabel. Daftar penerima hadiah harus memuat nama mahasiswa, NIM, program studi, keterangan juara, dan nominal hadiah. Identitas penerima hadiah seperti KTM, KTP, atau identitas relevan lainnya juga perlu dilampirkan sesuai ketentuan.",
+  },
+  {
+    id: "informasi-umum-ssc-telkom-university-surabaya-6",
+    title: "Informasi Umum SSC Telkom University Surabaya",
+    section: "Template LPJ kegiatan dapat diakses melalui link berikut:",
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    content: "Nota harus disusun sesuai urutan pengeluaran yang tercantum pada RAB. Nota harus ditempel menggunakan lem dan tidak diperbolehkan menggunakan stapler. Seluruh bukti fisik harus dilampirkan pada LPJ sesuai template, dilengkapi lembar pengesahan, dan dijilid.\nSoft copy LPJ wajib memuat hasil pindai nota asli, presensi, foto barang atau tempat sewa, foto kegiatan, sertifikat kegiatan, dan dokumen pendukung lainnya. Setelah LPJ dikumpulkan, Bagian Kemahasiswaan akan melakukan pemeriksaan dan verifikasi terhadap kelengkapan serta kesesuaian dokumen. Apabila LPJ belum lengkap, dokumen akan dikembalikan kepada Ormawa/UKM untuk diperbaiki. Proses LPJ dinyatakan selesai setelah seluruh dokumen dinyatakan lengkap, sesuai, dan telah diverifikasi oleh Bagian Kemahasiswaan.\n==================================================\nC. SERTIFIKAT KEGIATAN\n==================================================\nPengajuan tanda tangan sertifikat kegiatan dilakukan melalui formulir pengajuan yang telah disediakan. Pengaju perlu mengisi seluruh data kegiatan dengan lengkap dan benar, kemudian mengirimkan formulir pengajuan. Proses pemeriksaan membutuhkan waktu sekitar dua sampai tiga hari kerja. Informasi selanjutnya akan disampaikan melalui WhatsApp resmi Kemahasiswaan.",
+  },
+  {
+    id: "informasi-umum-ssc-telkom-university-surabaya-7",
+    title: "Informasi Umum SSC Telkom University Surabaya",
+    section: "Template LPJ kegiatan dapat diakses melalui link berikut:",
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    content: "Link pengajuan tanda tangan sertifikat kegiatan:\nhttps://forms.office.com/pages/responsepage.aspx?id=D_6vkKPCCEG7mGzrTpTvFQirFfd-c6lInVc5GFu5s_RUMk9GREVMVUs5TVpWVEpHSEQwQVlMNE1KNS4u&route=shorturl\n==================================================\nD. TRANSKRIP AKTIVITAS KEMAHASISWAAN (TAK)\n==================================================\nTranskrip Aktivitas Kemahasiswaan atau TAK merupakan layanan yang berkaitan dengan pencatatan aktivitas kemahasiswaan. Panduan dan layanan terkait TAK dapat diakses melalui link berikut:\nhttps://drive.google.com/file/d/1UDNYV--IAEiqQJzxV5Mx5VYTw7LbSttx/view?usp=drive_link\n==================================================\nE. LAYANAN STUDENT SERVICE CENTER\n==================================================\nStudent Service Center atau SSC berfungsi sebagai pusat layanan informasi dan bantuan bagi mahasiswa terkait kebutuhan akademik, kemahasiswaan, serta administrasi kampus. Informasi layanan Student Service Center dapat dilihat melalui Linktree SSC berikut:\nhttps://linktr.ee/kemahasiswaan.univtelkomsby\nChatbot SSC dapat membantu menjawab pertanyaan berdasarkan dokumen yang tersedia mengenai pengajuan proposal, LPJ, pendanaan kegiatan, sertifikat kegiatan, TAK, serta layanan SSC.",
+  },
+  {
+    id: "informasi-umum-ssc-telkom-university-surabaya-8",
+    title: "Informasi Umum SSC Telkom University Surabaya",
+    section: "Template LPJ kegiatan dapat diakses melalui link berikut:",
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    content: "Bagian Kemahasiswaan dapat dihubungi melalui WhatsApp pada nomor 0811-3221-2000.\nLink WhatsApp:\nhttps://api.whatsapp.com/send?phone=6281132212000",
+  },
+  {
+    id: "informasi-umum-ssc-telkom-university-surabaya-9",
+    title: "Informasi Umum SSC Telkom University Surabaya",
+    section: "SSC juga dapat dihubungi melalui Instagram berikut:",
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    content: "SSC juga dapat dihubungi melalui Instagram berikut:\nhttps://www.instagram.com/kemahasiswaan.telkomunivsby",
+  },
+  {
+    id: "syarat-pengajuan-lpj-kegiatan-1",
+    title: "Syarat Pengajuan LPJ Kegiatan",
+    section: "Syarat Pengajuan LPJ Kegiatan",
+    source: "Syarat Pengajuan LPJ Kegiatan.xlsx",
+    content: "Sheet: Table 1\nSyarat Pengajuan Laporan Pertanggungjawaban (LPJ) Kegiatan\nSheet: Table 2\n1. Menyediakan evidence hard copy berupa nota asli berstempel/kop atau kuitansi asli bertanda tangan.",
+  },
+  {
+    id: "syarat-pengajuan-lpj-kegiatan-2",
+    title: "Syarat Pengajuan LPJ Kegiatan",
+    section: "2. Jika pembelian dilakukan melalui marketplace, wajib melampirkan print nota PDF.",
+    source: "Syarat Pengajuan LPJ Kegiatan.xlsx",
+    content: "2. Jika pembelian dilakukan melalui marketplace, wajib melampirkan print nota PDF.\n3. Melampirkan presensi panitia dan peserta kegiatan khusus untuk pengajuan konsumsi.\n4. Bagi toko yang tidak memiliki evidence transaksi yang kurang sesuai wajib melampirkan foto toko beserta alamat toko.",
+  },
+  {
+    id: "syarat-pengajuan-lpj-kegiatan-3",
+    title: "Syarat Pengajuan LPJ Kegiatan",
+    section: "5. Melampirkan foto barang atau tempat apabila terdapat penyewaan.",
+    source: "Syarat Pengajuan LPJ Kegiatan.xlsx",
+    content: "5. Melampirkan foto barang atau tempat apabila terdapat penyewaan.\n6. Melampirkan foto kegiatan sebagai bukti pelaksanaan.",
+  },
+  {
+    id: "syarat-pengajuan-lpj-kegiatan-4",
+    title: "Syarat Pengajuan LPJ Kegiatan",
+    section: "7. Melampirkan foto sertifikasi kegiatan",
+    source: "Syarat Pengajuan LPJ Kegiatan.xlsx",
+    content: "7. Melampirkan foto sertifikasi kegiatan\n8. Jika terdapat pengeluaran untuk fee narasumber, wajib melampirkan CV narasumber.",
+  },
+  {
+    id: "syarat-pengajuan-lpj-kegiatan-5",
+    title: "Syarat Pengajuan LPJ Kegiatan",
+    section: "9. Jika terdapat reward pemenang, wajib melampirkan daftar penerima reward dalam bentuk tabel.",
+    source: "Syarat Pengajuan LPJ Kegiatan.xlsx",
+    content: "9. Jika terdapat reward pemenang, wajib melampirkan daftar penerima reward dalam bentuk tabel.\n10. Semua evidence dilampirkan pada LPJ sesuai template dan dijilid lengkap dengan lembar pengesahan.\n11. Soft copy seluruh LPJ wajib diunggah pada link LPJ yang telah disediakan https://forms.office.com/Pages/ResponsePage.aspx?id=D_6vkKPCCEG7mGzrTpTvF QirFfd-c6lInVc5GFu5s_RUQ05GSE5OQlRHWlNNVEI2S1dNMlBQWldUNC4u",
+  },
+  {
+    id: "syarat-pengajuan-lpj-kegiatan-6",
+    title: "Syarat Pengajuan LPJ Kegiatan",
+    section: "12. Nota harus disusun sesuai urutan pada RAB.",
+    source: "Syarat Pengajuan LPJ Kegiatan.xlsx",
+    content: "12. Nota harus disusun sesuai urutan pada RAB.\n13. Nota wajib memiliki kop atau stempel nota.",
+  },
+  {
+    id: "syarat-pengajuan-lpj-kegiatan-7",
+    title: "Syarat Pengajuan LPJ Kegiatan",
+    section: "14. Jika nota tidak memiliki kop/stempel, wajib melampirkan foto toko beserta alamat lengkap.",
+    source: "Syarat Pengajuan LPJ Kegiatan.xlsx",
+    content: "14. Jika nota tidak memiliki kop/stempel, wajib melampirkan foto toko beserta alamat lengkap.\n15. Nota ditempel rapi menggunakan lem dan tidak diperbolehkan menggunakan stapler.\nhttps://forms.office.com/Pages/ResponsePage.aspx?id=D_6vkKPCCEG7mGzrTpTvFQirFfd-c6lInVc5GFu5s_RUQ05GSE5OQlRHWlNNVEI2S1dNMlBQWldUNC4u",
+  },
+  {
+    id: "syarat-pengajuan-proposal-dana-kegiatan-1",
+    title: "Syarat Pengajuan Proposal Dana Kegiatan",
+    section: "Syarat Pengajuan Proposal Pengajuan Dana Kegiatan",
+    source: "Syarat Pengajuan Proposal Dana Kegiatan.docx",
+    content: "Syarat Pengajuan Proposal Pengajuan Dana Kegiatan\nProposal wajib menggunakan template resmi yang telah disediakan oleh Bagian Kemahasiswaan.\nPengajuan proposal dilakukan secara online melalui link: https://tel-u.ac.id/pengajuanpendanaanormawaukm\nPengajuan online dilakukan tanpa lembar pengesahan.\nHard copy proposal wajib dikumpulkan dan dilengkapi dengan lembar pengesahan bertanda tangan basah hingga Pembina Ormawa.\nPengajuan proposal harus sesuai dengan jadwal yang telah ditentukan pada grup WhatsApp resmi kemahasiswaan.\nRencana Anggaran Biaya (RAB) harus jelas, rinci, dan sesuai ketentuan yang berlaku.",
+  },
+  {
+    id: "syarat-pengajuan-proposal-dana-kegiatan-2",
+    title: "Syarat Pengajuan Proposal Dana Kegiatan",
+    section: "Dokumen transaksi harus lengkap dan absah.",
+    source: "Syarat Pengajuan Proposal Dana Kegiatan.docx",
+    content: "Dokumen transaksi harus lengkap dan absah.\nPengajuan konsumsi hanya berlaku untuk panitia kegiatan.\nTarif pengeluaran harus mengacu pada ketentuan yang berlaku.\nJika dokumen kurang lengkap atau tidak sesuai ketentuan/template, maka pencairan dana tidak dapat diproses.\nhttps://tel-u.ac.id/pengajuanpendanaanormawaukm",
+  },
 ];
 
 export const knowledgeSourceFiles: KnowledgeSourceFile[] = [
+  {
+    source: "Alur Pengajuan LPJ Kegiatan.docx",
+    fileName: "Alur Pengajuan LPJ Kegiatan.docx",
+    fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    fileUrl: "/knowledge-documents/alur-pengajuan-lpj-kegiatan.docx",
+  },
+  {
+    source: "Alur Pengajuan Proposal Dana Kegiatan.docx",
+    fileName: "Alur Pengajuan Proposal Dana Kegiatan.docx",
+    fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    fileUrl: "/knowledge-documents/alur-pengajuan-proposal-dana-kegiatan.docx",
+  },
+  {
+    source: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM.pdf",
+    fileName: "Alur Pengajuan Sertifikasi Kegiatan Ormawa UKM.pdf",
+    fileType: "application/pdf",
+    fileUrl: "/knowledge-documents/alur-pengajuan-sertifikasi-kegiatan-ormawa-ukm.pdf",
+  },
   {
     source: "FAQ SSC - Revisi.txt",
     fileName: "FAQ SSC - Revisi.txt",
     fileType: "text/plain",
     fileUrl: "/knowledge-documents/faq-ssc-revisi.txt",
   },
+  {
+    source: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    fileName: "Informasi_Umum_SSC_Telkom_University_Surabaya.txt",
+    fileType: "text/plain",
+    fileUrl: "/knowledge-documents/informasi-umum-ssc-telkom-university-surabaya.txt",
+  },
+  {
+    source: "Syarat Pengajuan LPJ Kegiatan.xlsx",
+    fileName: "Syarat Pengajuan LPJ Kegiatan.xlsx",
+    fileType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    fileUrl: "/knowledge-documents/syarat-pengajuan-lpj-kegiatan.xlsx",
+  },
+  {
+    source: "Syarat Pengajuan Proposal Dana Kegiatan.docx",
+    fileName: "Syarat Pengajuan Proposal Dana Kegiatan.docx",
+    fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    fileUrl: "/knowledge-documents/syarat-pengajuan-proposal-dana-kegiatan.docx",
+  },
 ];
 
-export const knowledgeSourceCount = 1;
-export const knowledgeChunkCount = 49;
+export const knowledgeSourceCount = 7;
+export const knowledgeChunkCount = 74;
+export const knowledgeDatasetRevision = "4a069f54cae638d9";

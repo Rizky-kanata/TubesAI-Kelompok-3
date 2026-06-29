@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const zlib = require("node:zlib");
+const { createHash } = require("node:crypto");
 
 const repoRoot = path.resolve(__dirname, "..");
 const documentsPath = path.join(repoRoot, "documents");
@@ -912,6 +913,13 @@ function toTsString(value) {
   return JSON.stringify(value);
 }
 
+function createKnowledgeDatasetRevision(knowledgeChunks, sourceFiles) {
+  return createHash("sha256")
+    .update(JSON.stringify({ knowledgeChunks, sourceFiles }))
+    .digest("hex")
+    .slice(0, 16);
+}
+
 function main() {
   const documents = getLocalDocuments();
 
@@ -992,6 +1000,11 @@ function main() {
   lines.push("");
   lines.push(`export const knowledgeSourceCount = ${documents.length};`);
   lines.push(`export const knowledgeChunkCount = ${knowledgeChunks.length};`);
+  lines.push(
+    `export const knowledgeDatasetRevision = ${toTsString(
+      createKnowledgeDatasetRevision(knowledgeChunks, sourceFiles)
+    )};`
+  );
   lines.push("");
 
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
@@ -1004,6 +1017,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  createKnowledgeDatasetRevision,
   normalizeExtractedText,
   splitDocumentSections,
   splitFaqSections,

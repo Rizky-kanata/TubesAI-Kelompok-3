@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const {
+  createKnowledgeDatasetRevision,
   normalizeExtractedText,
   splitFaqSections,
 } = require("./extract-knowledge.cjs");
@@ -13,6 +14,41 @@ const faqPath = path.join(
   "documents",
   "FAQ SSC - Revisi.txt"
 );
+
+test("revisi dataset deterministik dan berubah saat dokumen berubah", () => {
+  const chunks = [
+    {
+      id: "document-1",
+      title: "Document",
+      section: "Section",
+      source: "document.docx",
+      content: "Isi awal",
+    },
+  ];
+  const sourceFiles = [
+    {
+      source: "document.docx",
+      fileName: "document.docx",
+      fileType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      fileUrl: "/knowledge-documents/document.docx",
+    },
+  ];
+
+  const revision = createKnowledgeDatasetRevision(chunks, sourceFiles);
+
+  assert.equal(
+    createKnowledgeDatasetRevision(chunks, sourceFiles),
+    revision
+  );
+  assert.notEqual(
+    createKnowledgeDatasetRevision(
+      [{ ...chunks[0], content: "Isi diperbarui" }],
+      sourceFiles
+    ),
+    revision
+  );
+});
 
 test("normalisasi mempertahankan penanda Answer pada setiap FAQ", () => {
   const source = fs.readFileSync(faqPath, "utf8");
