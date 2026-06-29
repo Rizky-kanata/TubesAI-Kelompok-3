@@ -1,8 +1,8 @@
-# SSC Ormawa RAG Chatbot
+# Chatbot Layanan Administrasi UKM dan Ormawa
 
 Chatbot RAG berbasis React + Vite untuk menjawab pertanyaan seputar pengajuan proposal dana kegiatan, LPJ, dan sertifikasi kegiatan Ormawa/UKM.
 
-## Link Aplikasi
+## Link Chatbot
 
 Chatbot dapat diakses melalui link berikut:
 
@@ -17,7 +17,7 @@ Email    : admin@admin.com
 Password : admin123
 ```
 
-## Link Laporan Tugas Besar
+## Laporan Tugas Besar
 
 Dokumen laporan tugas besar dapat diakses melalui link berikut:
 
@@ -28,6 +28,12 @@ https://drive.google.com/drive/folders/180y89pTdM5BhkzYISbPIHvIEYYE-hljz?usp=sha
 Dataset atau dokumen sumber yang digunakan untuk knowledge base chatbot dapat diakses melalui link berikut:
 
 https://drive.google.com/drive/folders/1u4NUCzTzMFOWBvmo3Y7gLywBKpxDEtp6?usp=sharing
+
+## Hasil Analisis Evaluasi
+
+Hasil analisis dari chatbot dapat diakses melalui link berikut:
+
+https://drive.google.com/drive/folders/1QtpdLppMjMKwKKA2MWuPiW2JTs7Glcer?usp=sharing
 
 ## Menjalankan Aplikasi
 
