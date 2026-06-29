@@ -9,6 +9,11 @@ import {
   buildLocalFallbackAnswer,
   retrieveRelevantChunks,
 } from "../src/services/ragService";
+import {
+  getActiveKnowledgeSources,
+  resetActiveKnowledgeSources,
+  setKnowledgeSourceActive,
+} from "../src/services/knowledgeAdminService";
 
 test("ekspor alur proposal memilih jawaban FAQ proposal yang lengkap", async () => {
   const prompt =
@@ -60,4 +65,50 @@ test("alur proposal dapat diekspor menjadi PDF, Word, dan Excel valid", async ()
   assert.equal(signatures[0], "%PDF-");
   assert.match(signatures[1], /^PK/);
   assert.match(signatures[2], /^PK/);
+});
+
+test("satu-satunya dokumen aktif dapat dinonaktifkan", () => {
+  const values = new Map<string, string>();
+  const localStorageMock: Storage = {
+    get length() {
+      return values.size;
+    },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => [...values.keys()][index] ?? null,
+    removeItem: (key) => {
+      values.delete(key);
+    },
+    setItem: (key, value) => {
+      values.set(key, value);
+    },
+  };
+  const originalDescriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "localStorage"
+  );
+
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: localStorageMock,
+  });
+
+  try {
+    resetActiveKnowledgeSources();
+    const [onlySource] = getActiveKnowledgeSources();
+
+    assert.ok(onlySource);
+    localStorageMock.setItem(
+      "ssc-active-knowledge-sources",
+      JSON.stringify([onlySource])
+    );
+    setKnowledgeSourceActive(onlySource, false);
+    assert.deepEqual(getActiveKnowledgeSources(), []);
+  } finally {
+    if (originalDescriptor) {
+      Object.defineProperty(globalThis, "localStorage", originalDescriptor);
+    } else {
+      Reflect.deleteProperty(globalThis, "localStorage");
+    }
+  }
 });

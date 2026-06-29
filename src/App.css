@@ -1293,6 +1293,17 @@ body {
   .document-table-header {
     display: none;
   }
+
+  .document-row,
+  .document-main,
+  .document-actions,
+  .admin-row-actions {
+    min-width: 0;
+  }
+
+  .document-actions {
+    justify-content: stretch;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1366,5 +1377,16 @@ body {
   .admin-secondary-btn,
   .admin-danger-btn {
     width: 100%;
+  }
+
+  .admin-row-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-primary-btn.compact,
+  .admin-secondary-btn.compact,
+  .admin-danger-btn.compact {
+    min-height: 44px;
+    touch-action: manipulation;
   }
 }

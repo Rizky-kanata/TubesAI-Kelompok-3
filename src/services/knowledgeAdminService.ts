@@ -475,39 +475,29 @@ function readStoredActiveSources(): string[] | null {
   return rawSources.filter((source): source is string => typeof source === "string");
 }
 
-function getAllSources(): string[] {
-  return Array.from(
-    new Set([
-      ...getStaticSources(),
-      ...readUploadedDocumentsCache().map((document) => document.source),
-    ])
-  );
-}
-
 export function getActiveKnowledgeSources(): string[] {
-  const allSources = getAllSources();
+  const staticSources = getStaticSources();
   const storedSources = readStoredActiveSources();
   const activeUploadedSources = readUploadedDocumentsCache()
     .filter((document) => document.isActive)
     .map((document) => document.source);
+  const activeStaticSources = storedSources
+    ? storedSources.filter((source) => staticSources.includes(source))
+    : staticSources;
 
-  if (!storedSources) {
-    return allSources;
-  }
-
-  const activeSources = [
+  return [
     ...new Set([
-      ...storedSources.filter((source) => allSources.includes(source)),
-      ...activeUploadedSources.filter((source) => allSources.includes(source)),
+      ...activeStaticSources,
+      ...activeUploadedSources,
     ]),
   ];
-
-  return activeSources;
 }
 
 export function setKnowledgeSourceActive(source: string, isActive: boolean) {
-  const allSources = getAllSources();
-  const activeSources = new Set(getActiveKnowledgeSources());
+  const staticSources = getStaticSources();
+  const activeSources = new Set(
+    getActiveKnowledgeSources().filter((item) => staticSources.includes(item))
+  );
 
   if (isActive) {
     activeSources.add(source);
@@ -515,7 +505,7 @@ export function setKnowledgeSourceActive(source: string, isActive: boolean) {
     activeSources.delete(source);
   }
 
-  const nextSources = allSources.filter((item) => activeSources.has(item));
+  const nextSources = staticSources.filter((item) => activeSources.has(item));
   writeJsonToStorage(ACTIVE_SOURCES_KEY, nextSources);
 }
 
